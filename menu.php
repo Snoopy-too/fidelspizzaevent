@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
     }
 
     if (empty($order_items)) {
-        $error = '注文するにはピザを1つ以上選択してください。'; // TODO: Translate
+        $error = '注文するにはピザを1つ以上選択してください。'; // TODO: Translate this
     } else {
         try {
             $db->beginTransaction();
