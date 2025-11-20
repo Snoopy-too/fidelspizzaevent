@@ -2,146 +2,239 @@
 /**
  * GitHub Webhook Deployment Script for Bluehost
  *
- * This script listens for GitHub push webhooks and automatically pulls the latest
- * code from the GitHub repository to your Bluehost hosting.
+ * This script receives GitHub webhooks and automatically deploys your app
+ * to your Bluehost hosting account.
  *
  * SETUP INSTRUCTIONS:
- * 1. Upload this file to your Bluehost public_html directory
+ * 1. Update configuration below with your details
  * 2. Create a webhook in your GitHub repository:
  *    - Go to Settings > Webhooks > Add webhook
- *    - Payload URL: https://yoursite.com/deploy.php
+ *    - Payload URL: https://yoursite.com/fidelspizzaevent/deploy.php
  *    - Content type: application/json
  *    - Secret: [your-secure-secret-here]
  *    - Events: Push events
- * 3. Update the SECRET variable below with the same secret you used in GitHub
- * 4. Update REPO_PATH to point to your application directory
+ * 3. Update $GITHUB_SECRET to match the secret in your webhook
  */
 
-// Configuration
-define('SECRET', 'your-webhook-secret-here'); // Change this to a secure secret
-define('REPO_PATH', '/home/your_cpanel_username/public_html/fidelspizzaevent'); // Update this path
-define('LOG_FILE', '/home/your_cpanel_username/public_html/fidelspizzaevent/deploy.log');
-define('BRANCH', 'master'); // The branch to pull from
+// ===== CONFIGURATION =====
+$GITHUB_SECRET = '0GwqQGt6ck2DhKUfaWmcbeTnzK4zNj8K';
+$GITHUB_OWNER = 'Snoopy-too';
+$GITHUB_REPO = 'fidelspizzaevent';
+$GITHUB_BRANCH = 'master';
 
-// Enable error logging
+// Files/directories to preserve (won't be overwritten)
+$PRESERVE_FILES = [
+    'config.php',
+    'deploy.php',
+    'init-git.php',
+    'deploy.log',
+    'images',
+    '.git'
+];
+
+// ===== END CONFIGURATION =====
+
+// Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
-ini_set('error_log', LOG_FILE);
 
-/**
- * Log messages to deployment log file
- */
+// Set up logging
+$log_file = __DIR__ . '/deploy.log';
+
 function log_message($message) {
+    global $log_file;
     $timestamp = date('Y-m-d H:i:s');
-    $log_entry = "[$timestamp] $message\n";
-
-    if (!file_exists(LOG_FILE)) {
-        file_put_contents(LOG_FILE, "");
-    }
-    file_put_contents(LOG_FILE, $log_entry, FILE_APPEND);
+    file_put_contents($log_file, "[$timestamp] $message\n", FILE_APPEND);
 }
 
-/**
- * Verify GitHub webhook signature
- */
-function verify_signature($payload, $signature) {
-    $hash = 'sha256=' . hash_hmac('sha256', $payload, SECRET);
+function verify_github_webhook($secret, $payload, $signature) {
+    $hash = 'sha256=' . hash_hmac('sha256', $payload, $secret);
     return hash_equals($hash, $signature);
 }
 
+function send_response($code, $message) {
+    http_response_code($code);
+    header('Content-Type: application/json');
+    echo json_encode(['status' => ($code === 200 ? 'success' : 'error'), 'message' => $message]);
+    exit;
+}
+
+try {
+    // First, create initial log entry to confirm script is running
+    file_put_contents($log_file, "[" . date('Y-m-d H:i:s') . "] Deployment script executed\n", FILE_APPEND);
+
+    log_message('Webhook received from GitHub');
+    log_message('Headers: ' . json_encode(getallheaders()));
+    log_message('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
+    // Get the raw POST data
+    $payload = file_get_contents('php://input');
+    log_message('Payload size: ' . strlen($payload) . ' bytes');
+
+    if (empty($payload)) {
+        log_message('Error: No payload received');
+        send_response(400, 'No payload received');
+    }
+
+    // Verify webhook signature
+    $signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
+    log_message('Signature received: ' . substr($signature, 0, 20) . '...');
+    log_message('Secret length: ' . strlen($GITHUB_SECRET));
+
+    if (!verify_github_webhook($GITHUB_SECRET, $payload, $signature)) {
+        log_message('Invalid webhook signature - verification failed');
+        send_response(403, 'Invalid signature');
+    }
+
+    log_message('Webhook signature verified successfully');
+
+    // Parse the JSON payload
+    $data = json_decode($payload, true);
+
+    if (!$data) {
+        send_response(400, 'Invalid JSON payload');
+    }
+
+    // Check if this is a push event on the main branch
+    if ($data['ref'] !== "refs/heads/$GITHUB_BRANCH") {
+        log_message("Push to different branch received: {$data['ref']}, ignoring");
+        send_response(200, 'Not target branch, ignoring');
+    }
+
+    log_message('Valid webhook received for ' . $GITHUB_BRANCH . ' branch');
+
+    // Get the commit info
+    $commit = $data['head_commit'];
+    $author = $commit['author']['name'] ?? 'Unknown';
+    $message = $commit['message'] ?? 'No message';
+
+    log_message("Deployment triggered by: $author - $message");
+
+    // Download and extract the latest release
+    $download_url = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/archive/refs/heads/$GITHUB_BRANCH.zip";
+    $temp_file = tempnam(sys_get_temp_dir(), 'deploy_');
+    $extract_dir = sys_get_temp_dir() . '/deploy_extract_' . time();
+
+    log_message("Downloading from: $download_url");
+
+    // Download the repository as ZIP
+    $ch = curl_init($download_url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+
+    $zip_content = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($http_code !== 200 || empty($zip_content)) {
+        log_message("Failed to download repository. HTTP Code: $http_code");
+        send_response(500, 'Failed to download repository');
+    }
+
+    // Save the ZIP file
+    if (file_put_contents($temp_file, $zip_content) === false) {
+        log_message("Failed to save temporary ZIP file");
+        send_response(500, 'Failed to save temporary file');
+    }
+
+    log_message("ZIP file downloaded, size: " . filesize($temp_file) . " bytes");
+
+    // Extract the ZIP file
+    if (!mkdir($extract_dir, 0755, true)) {
+        log_message("Failed to create extraction directory: $extract_dir");
+        send_response(500, 'Failed to create extraction directory');
+    }
+
+    $zip = new ZipArchive();
+    if (!$zip->open($temp_file)) {
+        log_message("Failed to open ZIP file");
+        send_response(500, 'Failed to open ZIP file');
+    }
+
+    if (!$zip->extractTo($extract_dir)) {
+        log_message("Failed to extract ZIP file");
+        send_response(500, 'Failed to extract ZIP file');
+    }
+
+    $zip->close();
+    log_message("ZIP extracted successfully");
+
+    // Find the extracted folder (should be fidelspizzaevent-master or similar)
+    $extracted_files = scandir($extract_dir);
+    $source_dir = null;
+
+    foreach ($extracted_files as $file) {
+        if ($file !== '.' && $file !== '..' && is_dir("$extract_dir/$file")) {
+            $source_dir = "$extract_dir/$file";
+            break;
+        }
+    }
+
+    if (!$source_dir) {
+        log_message("Could not find extracted directory");
+        send_response(500, 'Extraction failed - no directory found');
+    }
+
+    log_message("Source directory: $source_dir");
+
+    // Get current app directory
+    $app_dir = dirname(__FILE__);
+
+    // Copy files from source to app directory, skipping preserved files
+    log_message("Copying files from $source_dir to $app_dir");
+    copy_dir_selective($source_dir, $app_dir, $PRESERVE_FILES);
+
+    // Clean up temporary files
+    @unlink($temp_file);
+    remove_dir($extract_dir);
+
+    log_message('Deployment completed successfully');
+    send_response(200, 'Deployment successful');
+
+} catch (Exception $e) {
+    log_message('Error: ' . $e->getMessage());
+    send_response(500, 'Deployment failed: ' . $e->getMessage());
+}
+
 /**
- * Execute shell command and return output
+ * Recursively copy directory, excluding certain files/directories
  */
-function execute_command($command, $cwd) {
-    $output = array();
-    $return_var = 0;
-    exec("cd $cwd && $command 2>&1", $output, $return_var);
-    return array(
-        'output' => implode("\n", $output),
-        'return_code' => $return_var
-    );
+function copy_dir_selective($src, $dst, $exclude_items) {
+    $dir = opendir($src);
+    @mkdir($dst, 0755, true);
+
+    while (false !== ($file = readdir($dir))) {
+        if ($file != "." && $file != "..") {
+            // Skip excluded files/directories
+            if (in_array($file, $exclude_items)) {
+                log_message("Skipping preserved item: $file");
+                continue;
+            }
+
+            if (is_dir("$src/$file")) {
+                copy_dir_selective("$src/$file", "$dst/$file", $exclude_items);
+            } else {
+                copy("$src/$file", "$dst/$file");
+            }
+        }
+    }
+    closedir($dir);
 }
 
-// Get the request payload and signature
-$payload = file_get_contents('php://input');
-$signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
-
-// Verify it's a valid GitHub webhook
-if (!$signature) {
-    log_message('ERROR: Missing X-Hub-Signature-256 header');
-    http_response_code(403);
-    die('Forbidden');
+/**
+ * Recursively remove directory
+ */
+function remove_dir($dir) {
+    if (is_dir($dir)) {
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            $path = "$dir/$file";
+            is_dir($path) ? remove_dir($path) : @unlink($path);
+        }
+        @rmdir($dir);
+    }
 }
-
-if (!verify_signature($payload, $signature)) {
-    log_message('ERROR: Invalid webhook signature');
-    http_response_code(403);
-    die('Forbidden');
-}
-
-// Only process push events
-$data = json_decode($payload, true);
-if (!isset($data['ref']) || $data['ref'] !== "refs/heads/" . BRANCH) {
-    log_message('INFO: Webhook received but not for branch: ' . ($data['ref'] ?? 'unknown'));
-    http_response_code(200);
-    die('OK - Not the target branch');
-}
-
-log_message('---START DEPLOYMENT---');
-log_message('Received push event for branch: ' . BRANCH);
-
-// Check if repository directory exists
-if (!is_dir(REPO_PATH)) {
-    log_message('ERROR: Repository path does not exist: ' . REPO_PATH);
-    http_response_code(500);
-    die('Repository path not found');
-}
-
-// Check if .git directory exists
-if (!is_dir(REPO_PATH . '/.git')) {
-    log_message('ERROR: .git directory not found. Repository not initialized.');
-    http_response_code(500);
-    die('Not a git repository');
-}
-
-// Fetch latest changes
-log_message('Running: git fetch origin ' . BRANCH);
-$result = execute_command('git fetch origin ' . BRANCH, REPO_PATH);
-log_message('Output: ' . $result['output']);
-if ($result['return_code'] !== 0) {
-    log_message('ERROR: git fetch failed with code: ' . $result['return_code']);
-    http_response_code(500);
-    die('git fetch failed');
-}
-
-// Reset to latest remote version
-log_message('Running: git reset --hard origin/' . BRANCH);
-$result = execute_command('git reset --hard origin/' . BRANCH, REPO_PATH);
-log_message('Output: ' . $result['output']);
-if ($result['return_code'] !== 0) {
-    log_message('ERROR: git reset failed with code: ' . $result['return_code']);
-    http_response_code(500);
-    die('git reset failed');
-}
-
-// Check if config.php exists (it should on production)
-if (!file_exists(REPO_PATH . '/config.php')) {
-    log_message('WARNING: config.php not found. Make sure it exists and is properly configured.');
-}
-
-// Get current commit info
-log_message('Running: git log -1 --oneline');
-$result = execute_command('git log -1 --oneline', REPO_PATH);
-log_message('Current commit: ' . $result['output']);
-
-log_message('---DEPLOYMENT COMPLETE---');
-
-// Return success response
-http_response_code(200);
-header('Content-Type: application/json');
-echo json_encode(array(
-    'status' => 'success',
-    'message' => 'Deployment completed successfully'
-));
 ?>
