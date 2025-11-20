@@ -89,7 +89,20 @@ if ($result !== 0) {
     echo "WARNING: git fetch may have issues, but continuing...\n\n";
 }
 
-echo "Step 4: Reset to latest code...\n";
+echo "Step 4: Checkout master branch...\n";
+$result = run_command("git checkout -b master origin/master", $repo_path);
+if ($result !== 0) {
+    echo "WARNING: Could not create local branch, trying to checkout existing...\n";
+    $result = run_command("git checkout master", $repo_path);
+    if ($result !== 0) {
+        echo "ERROR: Could not checkout master branch\n";
+        echo "</pre>";
+        exit;
+    }
+}
+echo "✓ Master branch checked out\n\n";
+
+echo "Step 5: Reset to latest code...\n";
 $result = run_command("git reset --hard origin/master", $repo_path);
 if ($result !== 0) {
     echo "ERROR: Could not reset repository\n";
@@ -98,7 +111,7 @@ if ($result !== 0) {
 }
 echo "✓ Repository reset to latest version\n\n";
 
-echo "Step 5: Verify setup...\n";
+echo "Step 6: Verify setup...\n";
 run_command("git log -1 --oneline", $repo_path);
 
 // Check if config.php exists
