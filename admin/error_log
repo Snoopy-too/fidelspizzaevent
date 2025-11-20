@@ -1,0 +1,2 @@
+[29-Sep-2025 05:37:42 America/Boise] PHP Fatal error:  Cannot redeclare translateStatus() (previously declared in /home3/mxbttmmy/public_html/fidelspizzaevent/admin/orders.php:9) in /home3/mxbttmmy/public_html/fidelspizzaevent/admin/orders.php on line 376
+[29-Sep-2025 05:37:56 America/Boise] PHP Fatal error:  Cannot redeclare translateStatus() (previously declared in /home3/mxbttmmy/public_html/fidelspizzaevent/admin/orders.php:9) in /home3/mxbttmmy/public_html/fidelspizzaevent/admin/orders.php on line 376

@@ -1,0 +1,49 @@
+# Configuration files with sensitive data
+config.php
+config.php.backup
+*.env
+.env.local
+
+# Claude Code settings
+.claude/
+
+# Uploaded images and temporary files
+images/
+uploads/
+tmp/
+temp/
+
+# PHP sessions
+sessions/
+
+# Local database dumps (keep schema files for reference)
+# Exclude only local development dumps
+*_local.sql
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# OS files
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+*.swp
+*.swo
+
+# Node/NPM (if used)
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Composer (if used)
+vendor/
+composer.lock
+
+# Local development logs
+*.log
