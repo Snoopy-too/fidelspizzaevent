@@ -1,15 +1,11 @@
 <?php
+declare(strict_types=1);
+
 require_once '../config.php';
 requireAdmin();
 
 $config = getSiteConfig();
 $db = getDB();
-
-// Helper function to translate order status
-function translateStatus($status) {
-    $key = 'status_' . $status;
-    return __($key);
-}
 
 // Get dashboard statistics
 $stats = [];
@@ -62,81 +58,10 @@ $stmt = $db->query("
     LIMIT 5
 ");
 $popular_items = $stmt->fetchAll();
+
+$page_title = __('admin_dashboard');
+require_once __DIR__ . '/includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="<?= $_SESSION['lang'] ?>">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= __('admin_dashboard') ?> - <?= htmlspecialchars($config['site_title'] ?? 'Fidel\'s Pizza Event') ?></title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Arial', sans-serif; background: #f5f5f5; color: #333; }
-        .header { background: #2c3e50; color: white; padding: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header-content { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 1.8em; }
-        .nav-links { display: flex; align-items: center; }
-        .nav-links a { color: white; text-decoration: none; margin-left: 20px; padding: 8px 16px; border-radius: 5px; transition: background 0.3s; }
-        .nav-links a:hover { background: rgba(255,255,255,0.2); }
-        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 40px; }
-        .stat-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; transition: transform 0.3s ease; }
-        .stat-card:hover { transform: translateY(-5px); }
-        .stat-icon { font-size: 3em; margin-bottom: 15px; }
-        .stat-number { font-size: 2.5em; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
-        .stat-label { color: #7f8c8d; font-weight: bold; text-transform: uppercase; font-size: 0.9em; }
-        .section { background: white; border-radius: 10px; padding: 30px; margin-bottom: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .section h2 { color: #2c3e50; margin-bottom: 20px; font-size: 1.5em; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
-        .admin-menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
-        .admin-menu-item { background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 25px; border-radius: 10px; text-decoration: none; text-align: center; transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3); }
-        .admin-menu-item:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4); color: white; }
-        .admin-menu-item .icon { font-size: 2.5em; display: block; margin-bottom: 10px; }
-        .admin-menu-item .title { font-weight: bold; font-size: 1.1em; }
-        .table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        .table th { background: #34495e; color: white; font-weight: bold; }
-        .table tr:hover { background: #f8f9fa; }
-        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold; text-transform: uppercase; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-confirmed { background: #d4edda; color: #155724; }
-        .status-preparing { background: #cce5ff; color: #004085; }
-        .status-ready { background: #e2e3e5; color: #383d41; }
-        .status-completed { background: #d1ecf1; color: #0c5460; }
-        .status-cancelled { background: #f8d7da; color: #721c24; }
-        .status-archived { background: #ececec; color: #444; }
-        .progress-bar { width: 100%; height: 20px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin: 10px 0; }
-        .progress-fill { height: 100%; background: linear-gradient(135deg, #3498db, #2980b9); transition: width 0.3s ease; }
-        .item-stat { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; }
-        .lang-selector { margin-left: 20px; }
-        .lang-selector select { padding: 5px; border-radius: 5px; border: none; background: rgba(255,255,255,0.2); color: white; cursor: pointer; }
-        .lang-selector select option { background: #2c3e50; color: white; }
-        @media (max-width: 768px) { .header-content { flex-direction: column; gap: 15px; } .nav-links { flex-wrap: wrap; justify-content: center; } .nav-links a { margin: 5px 10px; } .stats-grid { grid-template-columns: 1fr; } .admin-menu { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } .table { font-size: 0.9em; } }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="header-content">
-            <h1>🍕 <?= __('admin_dashboard') ?></h1>
-            <div class="nav-links">
-                <a href="../index.php">🏠 <?= __('home') ?></a>
-                <a href="orders.php">📋 <?= __('order_management') ?></a>
-                <a href="users.php">👥 <?= __('user_management') ?></a>
-                <a href="menu.php">🍕 <?= __('admin_menu_management') ?></a>
-                <a href="settings.php">⚙️ <?= __('admin_settings') ?></a>
-                <a href="../logout.php">🚪 <?= __('logout') ?></a>
-                <div class="lang-selector">
-                    <form method="GET" action="">
-                        <select name="lang" onchange="this.form.submit()">
-                            <option value="ja" <?= $_SESSION['lang'] === 'ja' ? 'selected' : '' ?>>🇯🇵 日本語</option>
-                            <option value="en" <?= $_SESSION['lang'] === 'en' ? 'selected' : '' ?>>🇺🇸 English</option>
-                        </select>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="container">
         <!-- Statistics Cards -->
         <div class="stats-grid">
             <div class="stat-card">
@@ -258,8 +183,6 @@ $popular_items = $stmt->fetchAll();
                 <a href="menu.php" style="background: #f39c12; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">🍕 <?= __('add_menu_item') ?></a>
                 <a href="orders.php?status=pending" style="background: #27ae60; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">⏳ <?= __('view_pending_orders') ?></a>
                 <a href="reports.php" style="background: #8e44ad; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">📊 <?= __('generate_reports') ?></a>
-            </div>
         </div>
-    </div>
-</body>
-</html>
+<?php
+require_once __DIR__ . '/includes/footer.php';

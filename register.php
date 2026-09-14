@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once 'config.php';
 
 $config = getSiteConfig();
@@ -7,13 +9,15 @@ $success = '';
 $code_verified = false;
 
 // Check if access code is provided and valid
-if ($_POST['access_code'] ?? '' === $config['registration_code']) {
+if (!empty($_POST['access_code']) && (string)$_POST['access_code'] === (string)($config['registration_code'] ?? '')) {
     $code_verified = true;
 }
 
 // Handle registration form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
-    if (!$code_verified) {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        $error = __('invalid_csrf_token');
+    } elseif (!$code_verified) {
         $error = __('error_invalid_access_code');
     } else {
         $first_name = sanitize($_POST['first_name'] ?? '');
@@ -272,7 +276,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             </div>
         <?php else: ?>
             <form method="POST" id="registrationForm">
-                <input type="hidden" name="access_code" value="<?= htmlspecialchars($_POST['access_code']) ?>">
+                <input type="hidden" name="csrf_token" value="<?= getCsrfToken() ?>">
+                <input type="hidden" name="access_code" value="<?= htmlspecialchars((string)($_POST['access_code'] ?? '')) ?>">
                 
                 <div class="form-group">
                     <label for="first_name"><?= __('first_name_label') ?></label>

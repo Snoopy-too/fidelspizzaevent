@@ -1,19 +1,23 @@
 <?php
+declare(strict_types=1);
+
 require_once '../config.php';
 requireAdmin();
 
-$db = getDB();
-$id = $_GET['id'] ?? null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlash('error', __('invalid_csrf_token') ?: 'Invalid CSRF token');
+        redirect('users.php');
+    }
 
-if ($id) {
-    // Delete user orders first (to avoid foreign key constraint issues)
-    $stmt = $db->prepare("DELETE FROM orders WHERE user_id = ?");
-    $stmt->execute([$id]);
-
-    // Delete the user
-    $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
-    $stmt->execute([$id]);
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    if ($id) {
+        $db = getDB();
+        $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+        $stmt->execute([$id]);
+        setFlash('success', 'User deleted successfully.');
+    }
 }
 
-header("Location: users.php");
-exit;
+redirect('users.php');
+

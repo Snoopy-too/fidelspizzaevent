@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // config.php.example - Database and application configuration template
 //
 // INSTRUCTIONS:
@@ -46,6 +48,15 @@ $translations = require __DIR__ . "/languages/{$lang_code}.php";
 function __($key) {
     global $translations;
     return $translations[$key] ?? $key;
+}
+
+function translateStatus(?string $status): string {
+    if ($status === null || $status === '') {
+        return '';
+    }
+    $key = 'status_' . $status;
+    $translated = __($key);
+    return $translated !== $key ? $translated : ucfirst($status);
 }
 
 // Database connection

@@ -4,45 +4,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config.php';
 requireAdmin();
 
-// Self-contained Security & Flash Helpers (ensures compatibility if remote config.php was not updated)
-if (!function_exists('getCsrfToken')) {
-    function getCsrfToken(): string {
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
-        return (string)$_SESSION['csrf_token'];
-    }
-}
-
-if (!function_exists('verifyCsrfToken')) {
-    function verifyCsrfToken(?string $token): bool {
-        if (empty($token) || empty($_SESSION['csrf_token'])) {
-            return false;
-        }
-        return hash_equals((string)$_SESSION['csrf_token'], (string)$token);
-    }
-}
-
-if (!function_exists('setFlash')) {
-    function setFlash(string $type, string $message): void {
-        $_SESSION['flash_message'] = [
-            'type' => $type,
-            'message' => $message
-        ];
-    }
-}
-
-if (!function_exists('getFlash')) {
-    function getFlash(): ?array {
-        if (isset($_SESSION['flash_message'])) {
-            $flash = $_SESSION['flash_message'];
-            unset($_SESSION['flash_message']);
-            return (array)$flash;
-        }
-        return null;
-    }
-}
-
 $rootPath = defined('ROOT_PATH') ? ROOT_PATH : dirname(__DIR__);
 
 $config = getSiteConfig();

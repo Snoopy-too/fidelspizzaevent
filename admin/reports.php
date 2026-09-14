@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once '../config.php';
 requireAdmin();
 
@@ -146,124 +148,9 @@ function formatWeight($grams) {
     }
     return number_format($grams) . ' g';
 }
+$page_title = __('admin_reports');
+require_once __DIR__ . '/includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="<?= $_SESSION['lang'] ?>">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= __('admin_reports') ?> - <?= htmlspecialchars($config['site_title'] ?? 'Admin') ?></title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Arial', sans-serif; background: #f5f5f5; color: #333; }
-        .header { background: #2c3e50; color: white; padding: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header-content { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 1.8em; }
-        .nav-links { display: flex; align-items: center; }
-        .nav-links a { color: white; text-decoration: none; margin-left: 20px; padding: 8px 16px; border-radius: 5px; transition: background 0.3s; }
-        .nav-links a:hover { background: rgba(255,255,255,0.2); }
-        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
-        .reports-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; }
-        .section { background: white; border-radius: 10px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .section h2 { color: #2c3e50; margin-bottom: 20px; font-size: 1.5em; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
-        .table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .table th, .table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
-        .table th { background: #34495e; color: white; font-weight: bold; }
-        .table tr:last-child td { border-bottom: none; }
-        .table tr:hover { background: #f8f9fa; }
-        .table td:last-child { font-weight: bold; text-align: right; color: #2c3e50; }
-        .no-data { text-align: center; padding: 40px; color: #7f8c8d; font-style: italic; }
-        .lang-selector { margin-left: 20px; }
-        .lang-selector select { padding: 5px; border-radius: 5px; border: none; background: rgba(255,255,255,0.2); color: white; cursor: pointer; }
-        .lang-selector select option { background: #2c3e50; color: white; }
-        .filter-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        .filter-form {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.05em;
-        }
-        .filter-form label {
-            color: #2c3e50;
-            font-weight: bold;
-        }
-        .filter-form select {
-            padding: 9px 14px;
-            border-radius: 6px;
-            border: 1px solid #bdc3c7;
-            font-size: 1em;
-            background: #fff;
-            color: #2c3e50;
-            font-weight: 500;
-            cursor: pointer;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .filter-form select:focus {
-            border-color: #3498db;
-        }
-        .event-summary-badge {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .badge-pill {
-            background: #ecf0f1;
-            color: #2c3e50;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.92em;
-            font-weight: 600;
-        }
-        .badge-pill.primary {
-            background: #e8f4fd;
-            color: #2980b9;
-        }
-        @media (max-width: 768px) {
-            .header-content { flex-direction: column; gap: 15px; }
-            .nav-links { flex-wrap: wrap; justify-content: center; }
-            .nav-links a { margin: 5px 10px; }
-            .filter-card { flex-direction: column; align-items: flex-start; }
-            .event-summary-badge { width: 100%; }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="header-content">
-            <h1>📊 <?= __('admin_reports') ?></h1>
-            <div class="nav-links">
-                <a href="dashboard.php">📊 <?= __('admin_dashboard') ?></a>
-                <a href="orders.php">📋 <?= __('order_management') ?></a>
-                <a href="users.php">👥 <?= __('user_management') ?></a>
-                <a href="menu.php">🍕 <?= __('admin_menu_management') ?></a>
-                <a href="settings.php">⚙️ <?= __('admin_settings') ?></a>
-                <a href="../logout.php">🚪 <?= __('logout') ?></a>
-                <div class="lang-selector">
-                    <form method="GET" action="">
-                        <select name="lang" onchange="this.form.submit()">
-                            <option value="ja" <?= $_SESSION['lang'] === 'ja' ? 'selected' : '' ?>>🇯🇵 日本語</option>
-                            <option value="en" <?= $_SESSION['lang'] === 'en' ? 'selected' : '' ?>>🇺🇸 English</option>
-                        </select>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="container">
         <!-- Event Selector -->
         <div class="filter-card">
             <form method="GET" action="" class="filter-form">
@@ -366,6 +253,5 @@ function formatWeight($grams) {
                 <?php endif; ?>
             </div>
         </div>
-    </div>
-</body>
-</html>
+<?php
+require_once __DIR__ . '/includes/footer.php';

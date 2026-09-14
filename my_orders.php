@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once 'config.php';
 
 requireLogin();
@@ -8,17 +10,24 @@ $db = getDB();
 
 // Handle cancel order request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_order'])) {
-    $order_id = $_POST['order_id'];
-    $stmt = $db->prepare("UPDATE orders SET status='cancelled' WHERE id=? AND user_id=? AND status IN ('pending','confirmed')");
-    $stmt->execute([$order_id, $_SESSION['user_id']]);
-    header("Location: my_orders.php");
-    exit;
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlash('error', __('invalid_csrf_token') ?: 'Invalid CSRF token.');
+        redirect('my_orders.php');
+    }
+
+    $order_id = filter_input(INPUT_POST, 'order_id', FILTER_VALIDATE_INT);
+    if ($order_id) {
+        $stmt = $db->prepare("UPDATE orders SET status='cancelled', updated_at=NOW() WHERE id=? AND user_id=? AND status IN ('pending','confirmed')");
+        $stmt->execute([$order_id, $_SESSION['user_id']]);
+        setFlash('success', 'Order cancelled successfully.');
+    }
+    redirect('my_orders.php');
 }
 
 // Get user's orders
 $stmt = $db->prepare("
     SELECT o.*, 
-           GROUP_CONCAT(CONCAT(mi.name, ' x', oi.quantity) SEPARATOR '<br>') as items
+           GROUP_CONCAT(CONCAT(mi.name, ' x', oi.quantity) SEPARATOR '\n') as items
     FROM orders o
     LEFT JOIN order_items oi ON o.id = oi.order_id
     LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
@@ -28,11 +37,6 @@ $stmt = $db->prepare("
 ");
 $stmt->execute([$_SESSION['user_id']]);
 $orders = $stmt->fetchAll();
-
-// Helper function for translating status
-function translateStatus($status) {
-    return __('status_' . $status);
-}
 ?>
 <!DOCTYPE html>
 <html lang="<?= $_SESSION['lang'] ?? 'ja' ?>">
@@ -113,7 +117,7 @@ h1 { color:#d32f2f; font-size:2.5em; margin-bottom:20px; }
 
         <div class="order-details">
             <div class="order-items">
-                <?= $order['items'] ? $order['items'] : __('item_not_found') ?>
+                <?= $order['items'] ? nl2br(htmlspecialchars($order['items'])) : __('item_not_found') ?>
             </div>
             <div class="order-total">
                 <?= formatPrice($order['total_amount']) ?>
@@ -122,6 +126,7 @@ h1 { color:#d32f2f; font-size:2.5em; margin-bottom:20px; }
 
         <?php if(in_array($order['status'], ['pending','confirmed'])): ?>
         <form method="POST" style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+            <input type="hidden" name="csrf_token" value="<?= getCsrfToken() ?>">
             <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
             <a href="edit_order.php?order_id=<?= $order['id'] ?>" class="btn btn-secondary"><?= __('edit_order') ?></a>
             <button type="submit" name="cancel_order" class="btn btn-cancel" onclick="return confirm('<?= __('confirm_cancel') ?>')"><?= __('cancel_order') ?></button>

@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once '../config.php';
 requireAdmin();
 
@@ -31,7 +33,10 @@ if (!$order) {
 
 // Handle order update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order'])) {
-    $status = $_POST['status'] ?? '';
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        $error_message = __('invalid_csrf_token') ?: 'Invalid CSRF token.';
+    } else {
+        $status = $_POST['status'] ?? '';
     $quantities = $_POST['quantity'] ?? [];
     $pickup_time = $_POST['pickup_time'] ?? null;
     $notes = $_POST['notes'] ?? '';
@@ -80,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order'])) {
         }
     }
 }
+}
 
 // Re-fetch order and items after potential update to show fresh data
 $stmt = $db->prepare("
@@ -104,194 +110,12 @@ $order_items = $stmt->fetchAll();
 $default_pickup = $order['pickup_time'] 
     ? date('Y-m-d H:i', strtotime($order['pickup_time'])) 
     : ($event_date ? $event_date . ' 12:00' : date('Y-m-d H:i'));
+$page_title = __('order_details');
+require_once __DIR__ . '/includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="<?= $_SESSION['lang'] ?>">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= __('order_details') ?> #<?= htmlspecialchars($order['order_number']) ?> - <?= __('admin_dashboard') ?></title>
-
 <!-- Flatpickr CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
-<style>
-    /* Copied all styles from dashboard.php for consistency */
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    
-    body {
-        font-family: 'Arial', 'Hiragino Sans', sans-serif;
-        background: #f5f5f5;
-        color: #333;
-    }
-    
-    .header {
-        background: #2c3e50;
-        color: white;
-        padding: 20px 0;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    
-    .header-content {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .header h1 {
-        font-size: 1.8em;
-    }
-    
-    .nav-links { display: flex; align-items: center; }
-    .nav-links a {
-        color: white;
-        text-decoration: none;
-        margin-left: 20px;
-        padding: 8px 16px;
-        border-radius: 5px;
-        transition: background 0.3s;
-    }
-    
-    .nav-links a:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
-    
-    .container {
-        max-width: 1200px;
-        margin: 30px auto;
-        padding: 0 20px;
-    }
-    
-    .section {
-        background: white;
-        border-radius: 10px;
-        padding: 30px;
-        margin-bottom: 30px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    }
-    
-    .section h2 {
-        color: #2c3e50;
-        margin-bottom: 20px;
-        font-size: 1.5em;
-        border-bottom: 3px solid #3498db;
-        padding-bottom: 10px;
-    }
-
-    .table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-    }
-    
-    .table th,
-    .table td {
-        padding: 12px;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
-    }
-    
-    .table th {
-        background: #34495e;
-        color: white;
-        font-weight: bold;
-    }
-    
-    .table tr:hover {
-        background: #f8f9fa;
-    }
-    
-    /* Styles for form elements specific to this page */
-    label { 
-        display: block; 
-        margin-top: 20px;
-        margin-bottom: 5px;
-        font-weight: bold; 
-        font-size: 1em; 
-        color: #34495e;
-    }
-
-    input[type="number"],
-    input[type="text"],
-    select {
-        padding: 10px;
-        border-radius: 5px;
-        border: 1px solid #ccc;
-        font-size: 1em;
-        transition: border-color 0.3s, box-shadow 0.3s;
-    }
-
-    input[type="number"] { width: 80px; }
-    
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 20px;
-        margin-bottom: 20px;
-    }
-
-    .btn { 
-        display: inline-block; 
-        padding: 10px 20px; 
-        border: none;
-        border-radius: 8px; 
-        color: white; 
-        font-weight: bold; 
-        text-decoration: none;
-        cursor: pointer; 
-        font-size: 1em; 
-        transition: opacity 0.3s;
-        margin-right: 10px;
-        margin-top: 10px;
-    }
-    .btn-primary { background: #27ae60; }
-    .btn-primary:hover { background: #2ecc71; }
-    .btn-secondary { background: #7f8c8d; }
-    .btn-secondary:hover { background: #95a5a6; }
-
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 8px; font-weight: bold; }
-    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb;}
-    .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;}
-    
-    .customer-info p { margin: 0 0 10px; font-size: 1.1em; }
-    .customer-info p strong { color: #34495e; }
-    .lang-selector { margin-left: 20px; }
-    .lang-selector select { padding: 5px; border-radius: 5px; border: none; background: rgba(255,255,255,0.2); color: white; cursor: pointer; }
-    .lang-selector select option { background: #2c3e50; color: white; }
-</style>
-</head>
-<body>
-
-    <div class="header">
-        <div class="header-content">
-            <h1>📋 <?= __('order_details') ?></h1>
-            <div class="nav-links">
-                <a href="dashboard.php">📊 <?= __('admin_dashboard') ?></a>
-                <a href="orders.php">📋 <?= __('order_management') ?></a>
-                <a href="users.php">👥 <?= __('user_management') ?></a>
-                <a href="menu.php">🍕 <?= __('admin_menu_management') ?></a>
-                <a href="settings.php">⚙️ <?= __('admin_settings') ?></a>
-                <a href="../logout.php">🚪 <?= __('logout') ?></a>
-                <div class="lang-selector">
-                    <form method="GET" action="">
-                        <select name="lang" onchange="this.form.submit()">
-                            <option value="ja" <?= $_SESSION['lang'] === 'ja' ? 'selected' : '' ?>>🇯🇵 日本語</option>
-                            <option value="en" <?= $_SESSION['lang'] === 'en' ? 'selected' : '' ?>>🇺🇸 English</option>
-                        </select>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="container">
         <div class="section">
             <h2><?= __('order') ?> #<?= htmlspecialchars($order['order_number']) ?></h2>
             
@@ -308,6 +132,7 @@ $default_pickup = $order['pickup_time']
             </div>
 
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?= getCsrfToken() ?>">
                 <h3><?= __('edit_order_details') ?></h3>
                 <div class="form-grid">
                     <div>
@@ -368,9 +193,7 @@ $default_pickup = $order['pickup_time']
                     <button type="submit" name="update_order" class="btn btn-primary"><?= __('save_changes') ?></button>
                     <a href="orders.php" class="btn btn-secondary"><?= __('back_to_orders') ?></a>
                 </div>
-            </form>
         </div>
-    </div>
 
 <!-- Flatpickr JS -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -382,5 +205,5 @@ flatpickr("#pickup_time", {
     time_24hr: true
 });
 </script>
-</body>
-</html>
+<?php
+require_once __DIR__ . '/includes/footer.php';
