@@ -8,19 +8,89 @@ $db = getDB();
 $stmt = $db->query("SELECT site_title FROM site_config LIMIT 1");
 $config = $stmt->fetch();
 
-// --- 1. Get total orders for each menu item (excluding cancelled, archived, completed) ---
-$stmt = $db->query("
+// --- 1. Fetch available event dates from orders ---
+$events_stmt = $db->query("
     SELECT 
-        mi.name, 
-        SUM(oi.quantity) as total_quantity
-    FROM order_items oi
-    JOIN menu_items mi ON oi.menu_item_id = mi.id
-    JOIN orders o ON oi.order_id = o.id
-    WHERE o.status NOT IN ('cancelled','archived','completed')
-    GROUP BY mi.id, mi.name
-    ORDER BY total_quantity DESC
+        DATE(pickup_time) AS event_date,
+        COUNT(DISTINCT id) AS order_count,
+        SUM(total_amount) AS total_revenue
+    FROM orders
+    WHERE pickup_time IS NOT NULL AND status != 'cancelled'
+    GROUP BY DATE(pickup_time)
+    ORDER BY event_date DESC
 ");
-$item_totals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$available_events = $events_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Determine selected event date
+$selected_event = null;
+if (isset($_GET['event_date'])) {
+    $requested_date = trim($_GET['event_date']);
+    if ($requested_date === 'all') {
+        $selected_event = 'all';
+    } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $requested_date)) {
+        $selected_event = $requested_date;
+    }
+}
+
+// Default to the latest available event date if none is explicitly requested
+if ($selected_event === null && !empty($available_events)) {
+    $selected_event = $available_events[0]['event_date'];
+}
+
+// --- 2. Get total orders for each menu item for the selected event ---
+$item_totals = [];
+$event_order_count = 0;
+$event_total_revenue = 0.0;
+
+if ($selected_event === 'all') {
+    $stmt = $db->query("
+        SELECT 
+            mi.name, 
+            SUM(oi.quantity) as total_quantity
+        FROM order_items oi
+        JOIN menu_items mi ON oi.menu_item_id = mi.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.status != 'cancelled'
+        GROUP BY mi.id, mi.name
+        ORDER BY total_quantity DESC
+    ");
+    $item_totals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $sum_stmt = $db->query("
+        SELECT COUNT(DISTINCT id) as order_count, SUM(total_amount) as total_revenue
+        FROM orders
+        WHERE status != 'cancelled'
+    ");
+    $summary = $sum_stmt->fetch(PDO::FETCH_ASSOC);
+    $event_order_count = (int)($summary['order_count'] ?? 0);
+    $event_total_revenue = (float)($summary['total_revenue'] ?? 0);
+} elseif ($selected_event !== null) {
+    $stmt = $db->prepare("
+        SELECT 
+            mi.name, 
+            SUM(oi.quantity) as total_quantity
+        FROM order_items oi
+        JOIN menu_items mi ON oi.menu_item_id = mi.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE DATE(o.pickup_time) = ?
+          AND o.status != 'cancelled'
+        GROUP BY mi.id, mi.name
+        ORDER BY total_quantity DESC
+    ");
+    $stmt->execute([$selected_event]);
+    $item_totals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $sum_stmt = $db->prepare("
+        SELECT COUNT(DISTINCT id) as order_count, SUM(total_amount) as total_revenue
+        FROM orders
+        WHERE DATE(pickup_time) = ?
+          AND status != 'cancelled'
+    ");
+    $sum_stmt->execute([$selected_event]);
+    $summary = $sum_stmt->fetch(PDO::FETCH_ASSOC);
+    $event_order_count = (int)($summary['order_count'] ?? 0);
+    $event_total_revenue = (float)($summary['total_revenue'] ?? 0);
+}
 
 // --- 2. Calculate required ingredients ---
 $shredded_mozzarella = 0;
@@ -106,10 +176,67 @@ function formatWeight($grams) {
         .lang-selector { margin-left: 20px; }
         .lang-selector select { padding: 5px; border-radius: 5px; border: none; background: rgba(255,255,255,0.2); color: white; cursor: pointer; }
         .lang-selector select option { background: #2c3e50; color: white; }
+        .filter-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .filter-form {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.05em;
+        }
+        .filter-form label {
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        .filter-form select {
+            padding: 9px 14px;
+            border-radius: 6px;
+            border: 1px solid #bdc3c7;
+            font-size: 1em;
+            background: #fff;
+            color: #2c3e50;
+            font-weight: 500;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .filter-form select:focus {
+            border-color: #3498db;
+        }
+        .event-summary-badge {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .badge-pill {
+            background: #ecf0f1;
+            color: #2c3e50;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.92em;
+            font-weight: 600;
+        }
+        .badge-pill.primary {
+            background: #e8f4fd;
+            color: #2980b9;
+        }
         @media (max-width: 768px) {
             .header-content { flex-direction: column; gap: 15px; }
             .nav-links { flex-wrap: wrap; justify-content: center; }
             .nav-links a { margin: 5px 10px; }
+            .filter-card { flex-direction: column; align-items: flex-start; }
+            .event-summary-badge { width: 100%; }
         }
     </style>
 </head>
@@ -137,6 +264,49 @@ function formatWeight($grams) {
     </div>
     
     <div class="container">
+        <!-- Event Selector -->
+        <div class="filter-card">
+            <form method="GET" action="" class="filter-form">
+                <label for="event_date">📅 <?= __('select_event') ?>:</label>
+                <select name="event_date" id="event_date" onchange="this.form.submit()">
+                    <?php if (empty($available_events)): ?>
+                        <option value=""><?= __('no_events_found') ?></option>
+                    <?php else: ?>
+                        <?php foreach ($available_events as $index => $ev): ?>
+                            <?php 
+                                $is_selected = ($selected_event === $ev['event_date']);
+                                $label_suffix = ($index === 0) ? ' (' . __('latest_event') . ')' : '';
+                            ?>
+                            <option value="<?= htmlspecialchars($ev['event_date']) ?>" <?= $is_selected ? 'selected' : '' ?>>
+                                <?= date('Y/m/d', strtotime($ev['event_date'])) ?><?= $label_suffix ?> — <?= $ev['order_count'] ?> <?= __('orders_count') ?>
+                            </option>
+                        <?php endforeach; ?>
+                        <option value="all" <?= $selected_event === 'all' ? 'selected' : '' ?>>
+                            🌐 <?= __('all_events') ?>
+                        </option>
+                    <?php endif; ?>
+                </select>
+                <noscript><button type="submit" style="padding: 8px 12px; cursor: pointer;"><?= __('apply') ?></button></noscript>
+            </form>
+
+            <?php if ($selected_event !== null): ?>
+            <div class="event-summary-badge">
+                <span class="badge-pill primary">
+                    📅 <?= $selected_event === 'all' ? __('all_events') : date('Y/m/d', strtotime($selected_event)) ?>
+                </span>
+                <span class="badge-pill">
+                    🍕 <?= number_format($total_pizzas) ?> <?= __('pizzas_sold') ?>
+                </span>
+                <span class="badge-pill">
+                    📋 <?= number_format($event_order_count) ?> <?= __('orders_count') ?>
+                </span>
+                <span class="badge-pill">
+                    💰 ¥<?= number_format($event_total_revenue, 0) ?>
+                </span>
+            </div>
+            <?php endif; ?>
+        </div>
+
         <div class="reports-grid">
             <!-- Menu Totals -->
             <div class="section">

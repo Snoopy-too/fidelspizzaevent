@@ -288,4 +288,12 @@ return [
     'invalid_order_status' => 'Invalid order status.',
     'order_update_failed' => 'Failed to update order',
     'order_update_success' => 'Order updated successfully.',
+    
+    // Reports - Event Selection
+    'select_event' => 'Select Event',
+    'latest_event' => 'Latest Event',
+    'all_events' => 'All Events Combined',
+    'no_events_found' => 'No past events found',
+    'pizzas_sold' => 'pizzas sold',
+    'total_sales_amount' => 'Total Sales',
 ];

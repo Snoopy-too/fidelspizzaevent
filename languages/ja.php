@@ -288,4 +288,12 @@ return [
     'invalid_order_status' => '無効な注文ステータスです。',
     'order_update_failed' => '注文の更新に失敗しました',
     'order_update_success' => '注文が正常に更新されました。',
+    
+    // レポート - イベント選択
+    'select_event' => 'イベントを選択',
+    'latest_event' => '最新のイベント',
+    'all_events' => 'すべてのイベント（合計）',
+    'no_events_found' => '過去のイベントが見つかりません',
+    'pizzas_sold' => '枚販売',
+    'total_sales_amount' => '総売上',
 ];
