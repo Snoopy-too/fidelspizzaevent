@@ -1,12 +1,54 @@
 <?php
 declare(strict_types=1);
 
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 requireAdmin();
+
+// Self-contained Security & Flash Helpers (ensures compatibility if remote config.php was not updated)
+if (!function_exists('getCsrfToken')) {
+    function getCsrfToken(): string {
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return (string)$_SESSION['csrf_token'];
+    }
+}
+
+if (!function_exists('verifyCsrfToken')) {
+    function verifyCsrfToken(?string $token): bool {
+        if (empty($token) || empty($_SESSION['csrf_token'])) {
+            return false;
+        }
+        return hash_equals((string)$_SESSION['csrf_token'], (string)$token);
+    }
+}
+
+if (!function_exists('setFlash')) {
+    function setFlash(string $type, string $message): void {
+        $_SESSION['flash_message'] = [
+            'type' => $type,
+            'message' => $message
+        ];
+    }
+}
+
+if (!function_exists('getFlash')) {
+    function getFlash(): ?array {
+        if (isset($_SESSION['flash_message'])) {
+            $flash = $_SESSION['flash_message'];
+            unset($_SESSION['flash_message']);
+            return (array)$flash;
+        }
+        return null;
+    }
+}
+
+$rootPath = defined('ROOT_PATH') ? ROOT_PATH : dirname(__DIR__);
 
 $config = getSiteConfig();
 $db = getDB();
 $csrfToken = getCsrfToken();
+
 
 // Handle AJAX toggle request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'ajax_toggle') {
@@ -150,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$id]);
 
                 if (!empty($item['image_path'])) {
-                    $fullPath = ROOT_PATH . DIRECTORY_SEPARATOR . $item['image_path'];
+                    $fullPath = $rootPath . DIRECTORY_SEPARATOR . $item['image_path'];
                     if (file_exists($fullPath) && is_file($fullPath)) {
                         @unlink($fullPath);
                     }
@@ -935,7 +977,7 @@ $hiddenCount = $totalCount - $activeCount;
                 
                 $imagePath = (string)($item['image_path'] ?? '');
                 $imageWebPath = !empty($imagePath) ? '../' . $imagePath : '';
-                $hasImage = !empty($imagePath) && file_exists(ROOT_PATH . DIRECTORY_SEPARATOR . $imagePath);
+                $hasImage = !empty($imagePath) && file_exists($rootPath . DIRECTORY_SEPARATOR . $imagePath);
                 
                 // Prepare item JSON data for modal edit button safely
                 $itemJson = htmlspecialchars(json_encode([
@@ -948,12 +990,15 @@ $hiddenCount = $totalCount - $activeCount;
                     'image_path' => $imagePath,
                     'image_url' => $hasImage ? $imageWebPath : ''
                 ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8');
+
+                $dataName = htmlspecialchars(function_exists('mb_strtolower') ? mb_strtolower($itemName, 'UTF-8') : strtolower($itemName), ENT_QUOTES, 'UTF-8');
+                $dataDesc = htmlspecialchars(function_exists('mb_strtolower') ? mb_strtolower($itemDesc, 'UTF-8') : strtolower($itemDesc), ENT_QUOTES, 'UTF-8');
                 ?>
                 <div class="menu-card <?= $isActive ? '' : 'is-hidden' ?>" 
                      id="item-card-<?= $itemId ?>"
                      data-id="<?= $itemId ?>"
-                     data-name="<?= htmlspecialchars(mb_strtolower($itemName)) ?>"
-                     data-desc="<?= htmlspecialchars(mb_strtolower($itemDesc)) ?>"
+                     data-name="<?= $dataName ?>"
+                     data-desc="<?= $dataDesc ?>"
                      data-status="<?= $isActive ? 'active' : 'hidden' ?>">
                     
                     <!-- Image with Overlaid Badges -->
@@ -1006,7 +1051,7 @@ $hiddenCount = $totalCount - $activeCount;
                                     onclick="openEditModal(<?= $itemJson ?>)">
                                 ✏️ <?= htmlspecialchars(__('edit')) ?>
                             </button>
-                            <form method="POST" style="display:inline;" onsubmit="return confirm('<?= htmlspecialchars(sprintf(__('confirm_delete_named'), $itemName), ENT_QUOTES) ?>')">
+                            <form method="POST" style="display:inline;" onsubmit="return confirm('<?= htmlspecialchars(str_replace('%s', $itemName, __('confirm_delete_named')), ENT_QUOTES, 'UTF-8') ?>')">
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                                 <input type="hidden" name="id" value="<?= $itemId ?>">
                                 <button type="submit" name="delete_item" class="btn btn-danger btn-sm" title="<?= htmlspecialchars(__('delete')) ?>">
