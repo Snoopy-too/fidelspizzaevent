@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/../../helpers.php';
 
 if (!isset($config)) {
@@ -6,7 +8,7 @@ if (!isset($config)) {
 }
 $flash = function_exists('getFlash') ? getFlash() : null;
 $currentLang = (string)($_SESSION['lang'] ?? 'ja');
-$displayTitle = isset($page_title) ? (string)$page_title : __('admin_dashboard');
+$displayTitle = isset($page_title) ? (string)$page_title : (isset($pageTitle) ? (string)$pageTitle : __('admin_dashboard'));
 ?>
 <!DOCTYPE html>
 <html lang="<?= htmlspecialchars($currentLang) ?>">

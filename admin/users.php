@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once '../config.php';
 require_once __DIR__ . '/../helpers.php';
 requireAdmin();
@@ -20,7 +22,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="section">
             <div class="section-header">
                 <h2><?= __('registered_users') ?></h2>
-                <a href="add_user.php" class="add-user-btn"><?= __('add_user_button') ?></a>
+                <a href="add_user.php" class="btn btn-add add-user-btn"><?= __('add_user_button') ?></a>
             </div>
 
             <?php if (!empty($users)): ?>

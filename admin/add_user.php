@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once '../config.php';
 require_once __DIR__ . '/../helpers.php';
 requireAdmin();
@@ -9,7 +11,7 @@ $db = getDB();
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
-        $errors[] = __('invalid_request');
+        $errors[] = __('invalid_csrf_token') ?: 'Invalid CSRF token.';
     } else {
         $first = trim($_POST['first_name'] ?? '');
         $last = trim($_POST['last_name'] ?? '');
@@ -36,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$first, $last, $email, $phone, $hash, $status]);
 
                 $newId = (int)$db->lastInsertId();
-                setFlash('success', __('user_saved') !== 'user_saved' ? __('user_saved') : 'User created successfully.');
+                setFlash('success', __('user_added_success') ?: 'User created successfully.');
                 header("Location: user_details.php?id=$newId");
                 exit;
             }
@@ -44,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = __('add_user_title');
+$page_title = __('add_user_title');
+$pageTitle = $page_title;
 $pageIcon = '➕';
 require_once __DIR__ . '/includes/header.php';
 ?>
@@ -83,7 +86,7 @@ require_once __DIR__ . '/includes/header.php';
                 </label>
 
                 <div style="margin-top: 25px; display: flex; gap: 10px; align-items: center;">
-                    <button type="submit" class="btn btn-primary" style="background:#27ae60;"><?= __('save_user') ?></button>
+                    <button type="submit" class="btn btn-save"><?= __('save_user') ?></button>
                     <a href="users.php" class="btn btn-back"><?= __('back_to_users') ?></a>
                 </div>
             </form>

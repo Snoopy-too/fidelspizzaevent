@@ -109,9 +109,11 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
     margin-bottom: 20px;
     border-bottom: 3px solid #3498db;
-    padding-bottom: 10px;
+    padding-bottom: 14px;
 }
 
 .section-header h2 {
@@ -275,31 +277,70 @@ body {
 
 /* Buttons & Controls */
 .btn {
-    display: inline-block;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-weight: 600;
     text-decoration: none;
     border: none;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     font-size: 0.95em;
+    line-height: 1.2;
     color: white;
     background: #3498db;
+    box-sizing: border-box;
+    white-space: nowrap;
+    vertical-align: middle;
 }
 
 .btn:hover {
-    opacity: 0.9;
+    opacity: 0.95;
     transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    color: white;
+    text-decoration: none;
 }
 
 .btn-save, .btn-success, .btn-add, .add-user-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95em;
+    line-height: 1.2;
     background: #27ae60;
-    color: white;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(39, 174, 96, 0.25);
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .btn-save:hover, .btn-success:hover, .btn-add:hover, .add-user-btn:hover {
-    background: #2ecc71;
+    background: #219653;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(39, 174, 96, 0.35);
+}
+
+.btn-back, .btn-secondary {
+    background: #7f8c8d;
+    color: white;
+}
+
+.btn-back:hover, .btn-secondary:hover {
+    background: #6c7a89;
+    color: white;
 }
 
 .btn-danger, .btn-delete {
