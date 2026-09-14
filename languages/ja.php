@@ -324,6 +324,7 @@ return [
     'promotions_title' => 'プロモーションメール配信管理',
     'compose_promotion' => '新規メール作成',
     'campaign_history' => '送信履歴',
+    'recipient_selection' => '宛先選択',
     'recipients_selected' => '%d 名を選択中',
     'select_all_recipients' => 'すべて選択',
     'target_all_eligible' => '対象：マーケティング承諾済みの全登録ユーザー',

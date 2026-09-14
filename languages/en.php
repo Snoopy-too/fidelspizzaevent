@@ -324,6 +324,7 @@ return [
     'promotions_title' => 'Promotional Email Hub',
     'compose_promotion' => 'Compose Campaign',
     'campaign_history' => 'Campaign History',
+    'recipient_selection' => 'Recipient Selection',
     'recipients_selected' => '%d recipient(s) selected',
     'select_all_recipients' => 'Select All',
     'target_all_eligible' => 'Target: All eligible confirmed users',

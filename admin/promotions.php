@@ -281,7 +281,12 @@ require_once __DIR__ . '/includes/header.php';
 
             <!-- Recipient Selector Card -->
             <div class="form-card">
-                <h3 style="margin-bottom: 12px; color: #2c3e50;">👥 <?= __('recipients_selected') ?></h3>
+                <h3 style="margin-bottom: 12px; color: #2c3e50; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span>👥 <?= __('recipient_selection') ?></span>
+                    <span id="recipientCountBadge" style="font-size: 13px; font-weight: 600; background: #e2e8f0; color: #475569; padding: 3px 12px; border-radius: 12px;">
+                        <?= empty($preselectedUserIds) ? __('target_all_eligible') : sprintf(__('recipients_selected'), count($preselectedUserIds)) ?>
+                    </span>
+                </h3>
                 
                 <div style="margin-bottom: 15px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight: 600; cursor: pointer;">
@@ -561,9 +566,28 @@ function switchTab(tab) {
     }
 }
 
+function updateRecipientBadge() {
+    const badge = document.getElementById('recipientCountBadge');
+    if (!badge) return;
+    const modeEl = document.querySelector('input[name="recipient_mode"]:checked');
+    const mode = modeEl ? modeEl.value : 'all';
+
+    if (mode === 'all') {
+        badge.textContent = <?= json_encode(__('target_all_eligible')) ?>;
+        badge.style.background = '#e8f8f5';
+        badge.style.color = '#27ae60';
+    } else {
+        const checkedCount = document.querySelectorAll('.user-check-item:checked').length;
+        badge.textContent = <?= json_encode(__('recipients_selected')) ?>.replace('%d', checkedCount);
+        badge.style.background = '#e2e8f0';
+        badge.style.color = '#475569';
+    }
+}
+
 function toggleRecipientPicker(show) {
     const area = document.getElementById('recipientPickerArea');
     area.style.display = show ? 'block' : 'none';
+    updateRecipientBadge();
 }
 
 function filterUsersList() {
@@ -580,6 +604,7 @@ function toggleAllRecipients(check) {
             cb.checked = check;
         }
     });
+    updateRecipientBadge();
 }
 
 function insertTag(tag) {
@@ -622,6 +647,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    document.querySelectorAll('.user-check-item').forEach(cb => {
+        cb.addEventListener('change', updateRecipientBadge);
+    });
+
+    updateRecipientBadge();
 });
 
 // App alert dialog replacement
