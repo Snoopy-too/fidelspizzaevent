@@ -194,7 +194,9 @@ CREATE TABLE `users` (
   `last_name` varchar(100) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `is_confirmed` tinyint(1) DEFAULT '0',
+  `accepts_marketing` tinyint(1) NOT NULL DEFAULT '1',
   `confirmation_token` varchar(64) DEFAULT NULL,
+  `unsubscribe_token` varchar(64) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -402,6 +404,49 @@ ALTER TABLE `order_items`
 ALTER TABLE `user_sessions`
   ADD CONSTRAINT `user_sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `user_sessions_ibfk_2` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `promotional_campaigns`
+--
+
+CREATE TABLE `promotional_campaigns` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `admin_id` int(11) NOT NULL,
+  `subject` varchar(255) NOT NULL,
+  `body_content` mediumtext NOT NULL,
+  `total_recipients` int(11) NOT NULL DEFAULT '0',
+  `sent_count` int(11) NOT NULL DEFAULT '0',
+  `failed_count` int(11) NOT NULL DEFAULT '0',
+  `status` enum('draft','sending','completed','failed') NOT NULL DEFAULT 'draft',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `completed_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_promotional_campaigns_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `promotional_campaign_recipients`
+--
+
+CREATE TABLE `promotional_campaign_recipients` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `campaign_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `email_sent_to` varchar(255) NOT NULL,
+  `status` enum('pending','sent','failed','opted_out') NOT NULL DEFAULT 'pending',
+  `error_message` varchar(500) DEFAULT NULL,
+  `sent_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_pcr_campaign` (`campaign_id`),
+  KEY `idx_pcr_user` (`user_id`),
+  CONSTRAINT `fk_pcr_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `promotional_campaigns` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_pcr_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -48,9 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                     // Create new user
                     $password_hash = hashPassword($password);
                     $confirmation_token = generateToken();
+                    $unsubscribe_token = generateToken();
                     
-                    $stmt = $db->prepare("INSERT INTO users (first_name, last_name, email, phone, password_hash, confirmation_token) VALUES (?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$first_name, $last_name, $email, $phone, $password_hash, $confirmation_token]);
+                    $stmt = $db->prepare("INSERT INTO users (first_name, last_name, email, phone, password_hash, confirmation_token, unsubscribe_token, accepts_marketing) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+                    $stmt->execute([$first_name, $last_name, $email, $phone, $password_hash, $confirmation_token, $unsubscribe_token]);
                     
                     // Send confirmation email
                     $template = getEmailTemplate('confirmation_email');

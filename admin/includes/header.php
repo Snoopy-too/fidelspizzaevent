@@ -25,6 +25,7 @@ $displayTitle = isset($page_title) ? (string)$page_title : (isset($pageTitle) ? 
                 <a href="dashboard.php">📊 <?= __('admin_dashboard') ?></a>
                 <a href="orders.php">📋 <?= __('order_management') ?></a>
                 <a href="users.php">👥 <?= __('user_management') ?></a>
+                <a href="promotions.php">📧 <?= __('promotional_emails') ?></a>
                 <a href="menu.php">🍕 <?= __('admin_menu_management') ?></a>
                 <a href="settings.php">⚙️ <?= __('admin_settings') ?></a>
                 <a href="reports.php">📈 <?= __('admin_reports') ?></a>
