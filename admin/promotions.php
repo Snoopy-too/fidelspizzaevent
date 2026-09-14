@@ -126,42 +126,120 @@ require_once __DIR__ . '/includes/header.php';
     background: linear-gradient(90deg, #3498db, #2ecc71);
     transition: width 0.3s ease;
 }
-/* Modal Styles */
+
+/* App Modern Modals */
 .modal-overlay {
-    display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 9999;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10000;
     padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+.modal-overlay.is-open {
+    opacity: 1;
+    visibility: visible;
 }
 .modal-content {
     background: #ffffff;
-    border-radius: 8px;
-    max-width: 750px;
+    border-radius: 12px;
     width: 100%;
+    max-width: 600px;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+    transform: scale(0.95);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+}
+.modal-overlay.is-open .modal-content {
+    transform: scale(1);
 }
 .modal-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid #e9ecef;
+    padding: 16px 22px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: #64748b;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+.modal-close:hover {
+    color: #0f172a;
+    background: #e2e8f0;
+}
 .modal-body {
-    padding: 20px;
+    padding: 22px 24px;
     overflow-y: auto;
+    font-size: 14.5px;
+    color: #334155;
+    line-height: 1.5;
 }
 .modal-footer {
-    padding: 15px 20px;
-    border-top: 1px solid #e9ecef;
-    text-align: right;
+    padding: 16px 22px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+}
+.modal-btn {
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+.modal-btn-cancel {
+    background: #e2e8f0;
+    color: #475569;
+}
+.modal-btn-cancel:hover {
+    background: #cbd5e1;
+    color: #1e293b;
+}
+.modal-btn-primary {
+    background: #d32f2f;
+    color: #ffffff;
+}
+.modal-btn-primary:hover {
+    background: #b71c1c;
+}
+.modal-btn-dark {
+    background: #2c3e50;
+    color: #ffffff;
+}
+.modal-btn-dark:hover {
+    background: #1a252f;
 }
 </style>
 
@@ -293,7 +371,7 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn" style="background-color: #34495e; color: white; padding: 10px 20px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;" onclick="openPreviewModal()">
                         👁️ <?= __('preview_email') ?>
                     </button>
-                    <button type="button" id="startSendBtn" class="btn" style="background-color: #d32f2f; color: white; padding: 10px 24px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;" onclick="confirmAndStartCampaign()">
+                    <button type="button" id="startSendBtn" class="btn" style="background-color: #d32f2f; color: white; padding: 10px 24px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;" onclick="promptSendConfirmation()">
                         🚀 <?= __('send_promotions_btn') ?>
                     </button>
                 </div>
@@ -356,12 +434,78 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- PREVIEW MODAL -->
-<div id="previewModal" class="modal-overlay">
-    <div class="modal-content">
+<!-- 1. STYLED CONFIRMATION MODAL -->
+<div id="confirmSendModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 520px;">
         <div class="modal-header">
-            <h3 style="margin: 0;">👁️ <?= __('preview_email') ?></h3>
-            <button type="button" onclick="closeModal('previewModal')" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            <h3>🍕 <?= __('confirm_send_title') ?></h3>
+            <button type="button" class="modal-close" onclick="closeModal('confirmSendModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px;">
+                <div style="font-size: 34px; line-height: 1;">📬</div>
+                <div>
+                    <h4 style="font-size: 16px; color: #1e293b; margin-bottom: 4px;">
+                        <?= __('confirm_send_title') ?>
+                    </h4>
+                    <p id="confirmRecipientSubtext" style="color: #64748b; font-size: 14px; margin: 0;">
+                        -
+                    </p>
+                </div>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px;">
+                    <?= __('subject_label') ?>
+                </div>
+                <div id="confirmSubjectPreview" style="font-weight: 600; color: #0f172a; font-size: 14.5px; word-break: break-word;">
+                    -
+                </div>
+            </div>
+
+            <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px 14px; display: flex; gap: 10px; align-items: center;">
+                <span style="font-size: 18px;">ℹ️</span>
+                <span style="font-size: 13px; color: #92400e;">
+                    <?= __('confirm_send_notice') ?>
+                </span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('confirmSendModal')">
+                <?= __('cancel') ?>
+            </button>
+            <button type="button" id="confirmSendExecuteBtn" class="modal-btn modal-btn-primary" onclick="executeCampaignSending()">
+                <?= __('confirm_send_action') ?>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 2. STYLED APP ALERT MODAL -->
+<div id="appAlertModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 440px;">
+        <div class="modal-header">
+            <h3 id="appAlertTitle">🔔 Notice</h3>
+            <button type="button" class="modal-close" onclick="closeModal('appAlertModal')">&times;</button>
+        </div>
+        <div class="modal-body" style="display: flex; gap: 14px; align-items: flex-start;">
+            <div id="appAlertIcon" style="font-size: 30px; line-height: 1;">⚠️</div>
+            <p id="appAlertMessage" style="font-size: 14px; color: #334155; margin: 0; line-height: 1.5;"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-btn modal-btn-dark" onclick="closeModal('appAlertModal')">
+                <?= __('close') ?>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 3. PREVIEW MODAL -->
+<div id="previewModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 750px;">
+        <div class="modal-header">
+            <h3>👁️ <?= __('preview_email') ?></h3>
+            <button type="button" class="modal-close" onclick="closeModal('previewModal')">&times;</button>
         </div>
         <div class="modal-body">
             <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
@@ -371,17 +515,17 @@ require_once __DIR__ . '/includes/header.php';
             <iframe id="previewIframe" style="width: 100%; height: 380px; border: 1px solid #ddd; border-radius: 6px; background: white;"></iframe>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModal('previewModal')"><?= __('close') ?></button>
+            <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('previewModal')"><?= __('close') ?></button>
         </div>
     </div>
 </div>
 
-<!-- RECIPIENTS LOG MODAL -->
+<!-- 4. RECIPIENTS LOG MODAL -->
 <div id="recipientsModal" class="modal-overlay">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 750px;">
         <div class="modal-header">
-            <h3 style="margin: 0;">📋 Delivery Log: <span id="logCampaignTitle" style="font-weight: normal; font-size: 15px;"></span></h3>
-            <button type="button" onclick="closeModal('recipientsModal')" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            <h3>📋 <?= __('view_delivery_log') ?>: <span id="logCampaignTitle" style="font-weight: normal; font-size: 15px;"></span></h3>
+            <button type="button" class="modal-close" onclick="closeModal('recipientsModal')">&times;</button>
         </div>
         <div class="modal-body">
             <div id="logLoading" style="text-align: center; padding: 20px; color: #666;">Loading recipient records...</div>
@@ -398,7 +542,7 @@ require_once __DIR__ . '/includes/header.php';
             </table>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModal('recipientsModal')"><?= __('close') ?></button>
+            <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('recipientsModal')"><?= __('close') ?></button>
         </div>
     </div>
 </div>
@@ -448,8 +592,44 @@ function insertTag(tag) {
     textarea.selectionStart = textarea.selectionEnd = start + tag.length;
 }
 
+// Modal opening/closing with animated classes
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('is-open');
+    }
+}
+
 function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('is-open');
+    }
+}
+
+// Close on Escape or click outside
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.is-open').forEach(m => m.classList.remove('is-open'));
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.remove('is-open');
+            }
+        });
+    });
+});
+
+// App alert dialog replacement
+function showAppAlert(message, title = 'Notice', icon = '⚠️') {
+    document.getElementById('appAlertTitle').textContent = title;
+    document.getElementById('appAlertMessage').textContent = message;
+    document.getElementById('appAlertIcon').textContent = icon;
+    openModal('appAlertModal');
 }
 
 function openPreviewModal() {
@@ -458,17 +638,16 @@ function openPreviewModal() {
     const csrfToken = document.getElementById('csrfToken').value;
 
     if (!subject) {
-        alert('Please enter a subject line first.');
+        showAppAlert('Please enter a subject line first.', 'Subject Required', '✍️');
         document.getElementById('campaignSubject').focus();
         return;
     }
     if (!bodyContent) {
-        alert('Please enter email body content first.');
+        showAppAlert('Please enter email body content first.', 'Message Required', '📝');
         document.getElementById('campaignBody').focus();
         return;
     }
 
-    // Find first selected user ID if available
     let sampleUserId = null;
     const checked = document.querySelector('.user-check-item:checked');
     if (checked) {
@@ -494,13 +673,13 @@ function openPreviewModal() {
             const iframe = document.getElementById('previewIframe');
             iframe.srcdoc = data.data.html;
 
-            document.getElementById('previewModal').style.display = 'flex';
+            openModal('previewModal');
         } else {
-            alert('Preview error: ' + (data.message || 'Unknown error'));
+            showAppAlert(data.message || 'Unknown error occurred while generating preview.', 'Preview Error', '❌');
         }
     })
     .catch(err => {
-        alert('Communication error: ' + err.message);
+        showAppAlert('Communication error: ' + err.message, 'Network Error', '🌐');
     });
 }
 
@@ -508,7 +687,7 @@ function openRecipientsModal(campaignId, title) {
     document.getElementById('logCampaignTitle').textContent = title;
     document.getElementById('logLoading').style.display = 'block';
     document.getElementById('logTable').style.display = 'none';
-    document.getElementById('recipientsModal').style.display = 'flex';
+    openModal('recipientsModal');
 
     fetch('ajax_send_promotion.php?action=recipients&campaign_id=' + campaignId)
     .then(r => r.json())
@@ -538,7 +717,7 @@ function openRecipientsModal(campaignId, title) {
             });
             document.getElementById('logTable').style.display = 'table';
         } else {
-            alert('Could not load log: ' + res.message);
+            showAppAlert(res.message || 'Could not load log.', 'Log Error', '❌');
         }
     })
     .catch(e => {
@@ -546,19 +725,23 @@ function openRecipientsModal(campaignId, title) {
     });
 }
 
-async function confirmAndStartCampaign() {
+// Global cached campaign dispatch state
+let pendingDispatchState = null;
+
+// Prompt styled confirmation modal
+function promptSendConfirmation() {
     const subject = document.getElementById('campaignSubject').value.trim();
     const bodyContent = document.getElementById('campaignBody').value.trim();
     const csrfToken = document.getElementById('csrfToken').value;
     const mode = document.querySelector('input[name="recipient_mode"]:checked').value;
 
     if (!subject) {
-        alert('Please enter a subject line.');
+        showAppAlert('Please enter a subject line for your promotion.', 'Subject Line Required', '✍️');
         document.getElementById('campaignSubject').focus();
         return;
     }
     if (!bodyContent) {
-        alert('Please enter email body content.');
+        showAppAlert('Please enter the email body content.', 'Message Content Required', '📝');
         document.getElementById('campaignBody').focus();
         return;
     }
@@ -569,18 +752,42 @@ async function confirmAndStartCampaign() {
             selectedIds.push(cb.value);
         });
         if (selectedIds.length === 0) {
-            alert(<?= json_encode(__('no_recipients_selected')) ?>);
+            showAppAlert(<?= json_encode(__('no_recipients_selected')) ?>, 'No Recipients Selected', '👥');
             return;
         }
     }
 
-    const confirmMsg = mode === 'selected' 
-        ? `Are you sure you want to send this promotion to ${selectedIds.length} selected recipient(s)?`
-        : `Are you sure you want to send this promotion to ALL eligible confirmed users?`;
+    // Populate styled confirmation modal
+    const subtextEl = document.getElementById('confirmRecipientSubtext');
+    if (mode === 'selected') {
+        subtextEl.innerHTML = <?= json_encode(__('confirm_send_desc_selected')) ?>.replace('%d', selectedIds.length);
+    } else {
+        subtextEl.innerHTML = <?= json_encode(__('confirm_send_desc_all')) ?>;
+    }
 
-    if (!confirm(confirmMsg)) {
+    document.getElementById('confirmSubjectPreview').textContent = subject;
+
+    // Cache state for execution
+    pendingDispatchState = {
+        subject: subject,
+        bodyContent: bodyContent,
+        csrfToken: csrfToken,
+        selectedIds: selectedIds
+    };
+
+    openModal('confirmSendModal');
+}
+
+// Execute sending after modal confirmation
+async function executeCampaignSending() {
+    closeModal('confirmSendModal');
+
+    if (!pendingDispatchState) {
         return;
     }
+
+    const { subject, bodyContent, csrfToken, selectedIds } = pendingDispatchState;
+    pendingDispatchState = null;
 
     // Disable start button
     const startBtn = document.getElementById('startSendBtn');
@@ -602,6 +809,9 @@ async function confirmAndStartCampaign() {
     errorsDiv.style.display = 'none';
     errorsDiv.innerHTML = '';
     successMsg.style.display = 'none';
+
+    // Scroll progress card into view smoothly
+    progressBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     // 1. Create Campaign
     const formData = new FormData();
@@ -667,7 +877,6 @@ async function confirmAndStartCampaign() {
             }
 
             if (!isFinished) {
-                // Short throttle of 200ms to allow UI render
                 await new Promise(r => setTimeout(r, 200));
             }
         }
@@ -680,7 +889,7 @@ async function confirmAndStartCampaign() {
         startBtn.style.opacity = '1';
 
     } catch (err) {
-        alert('Campaign error: ' + err.message);
+        showAppAlert('Campaign delivery error: ' + err.message, 'Execution Error', '❌');
         startBtn.disabled = false;
         startBtn.style.opacity = '1';
         progressStats.textContent = 'Error: ' + err.message;

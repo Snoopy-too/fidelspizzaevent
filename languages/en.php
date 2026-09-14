@@ -354,5 +354,10 @@ return [
     'campaign_stats' => 'Delivered / Failed',
     'campaign_author' => 'Author',
     'no_campaigns_found' => 'No promotional campaigns sent yet.',
+    'confirm_send_title' => 'Confirm Promotional Campaign',
+    'confirm_send_desc_selected' => 'You are about to send this promotional email to <strong>%d</strong> selected recipient(s).',
+    'confirm_send_desc_all' => 'You are about to send this promotional email to <strong>ALL</strong> eligible confirmed users.',
+    'confirm_send_notice' => 'Emails will be processed in background batches with live progress tracking.',
+    'confirm_send_action' => '🚀 Send Campaign Now',
 ];
 

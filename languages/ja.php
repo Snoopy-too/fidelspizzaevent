@@ -354,5 +354,10 @@ return [
     'campaign_stats' => '成功 / 失敗',
     'campaign_author' => '作成者',
     'no_campaigns_found' => 'プロモーションメールの送信履歴はありません。',
+    'confirm_send_title' => '送信内容の確認',
+    'confirm_send_desc_selected' => '選択した <strong>%d</strong> 名のユーザーにプロモーションメールを送信します。',
+    'confirm_send_desc_all' => 'マーケティング承諾済みの<strong>全登録ユーザー</strong>にプロモーションメールを送信します。',
+    'confirm_send_notice' => 'メールはバックグラウンドで順次バッチ送信され、進捗状況がリアルタイムで表示されます。',
+    'confirm_send_action' => '🚀 送信を開始する',
 ];
 
