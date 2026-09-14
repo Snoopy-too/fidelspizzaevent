@@ -271,4 +271,21 @@ return [
     'pepperoni' => 'Pepperoni',
     'fresh_basil' => 'Fresh Basil',
     'packages' => 'packages',
+    
+    // Order Details
+    'order_details' => 'Order Details',
+    'order' => 'Order',
+    'order_date' => 'Order Date',
+    'edit_order_details' => 'Edit Order Details',
+    'order_status' => 'Order Status',
+    'select_date_time' => 'Select date and time',
+    'notes_placeholder' => 'Enter order notes, special instructions, or delivery details...',
+    'no_items_in_order' => 'No items found in this order.',
+    'unit_price' => 'Unit Price',
+    'subtotal' => 'Subtotal',
+    'save_changes' => 'Save Changes',
+    'back_to_orders' => '← Back to Orders',
+    'invalid_order_status' => 'Invalid order status.',
+    'order_update_failed' => 'Failed to update order',
+    'order_update_success' => 'Order updated successfully.',
 ];

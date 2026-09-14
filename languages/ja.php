@@ -271,4 +271,21 @@ return [
     'pepperoni' => 'ペパロニ',
     'fresh_basil' => 'フレッシュバジル',
     'packages' => 'パック',
+    
+    // 注文詳細
+    'order_details' => '注文詳細',
+    'order' => '注文',
+    'order_date' => '注文日時',
+    'edit_order_details' => '注文詳細の編集',
+    'order_status' => '注文ステータス',
+    'select_date_time' => '日時を選択',
+    'notes_placeholder' => '注文に関するメモや特記事項を入力...',
+    'no_items_in_order' => 'この注文には商品がありません。',
+    'unit_price' => '単価',
+    'subtotal' => '小計',
+    'save_changes' => '変更を保存',
+    'back_to_orders' => '← 注文一覧に戻る',
+    'invalid_order_status' => '無効な注文ステータスです。',
+    'order_update_failed' => '注文の更新に失敗しました',
+    'order_update_success' => '注文が正常に更新されました。',
 ];
