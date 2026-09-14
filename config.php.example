@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+require_once __DIR__ . '/helpers.php';
 
 // config.php.example - Database and application configuration template
 //
@@ -126,7 +126,7 @@ function redirect($url) {
 }
 
 function formatPrice($price) {
-    return '¥' . number_format($price, 0);
+    return '¥' . number_format((float)$price, 0);
 }
 
 function sendEmail($to, $subject, $body, $headers = '') {

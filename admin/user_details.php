@@ -1,7 +1,6 @@
 <?php
-declare(strict_types=1);
-
 require_once '../config.php';
+require_once __DIR__ . '/../helpers.php';
 requireAdmin();
 
 $config = getSiteConfig();

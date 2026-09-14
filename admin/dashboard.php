@@ -1,7 +1,6 @@
 <?php
-declare(strict_types=1);
-
 require_once '../config.php';
+require_once __DIR__ . '/../helpers.php';
 requireAdmin();
 
 $config = getSiteConfig();
@@ -66,19 +65,19 @@ require_once __DIR__ . '/includes/header.php';
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon">📋</div>
-                <div class="stat-number"><?= number_format($stats['total_orders']) ?></div>
+                <div class="stat-number"><?= number_format((float)($stats['total_orders'] ?? 0)) ?></div>
                 <div class="stat-label"><?= __('total_orders') ?></div>
             </div>
             
             <div class="stat-card">
                 <div class="stat-icon">💰</div>
-                <div class="stat-number"><?= formatPrice($stats['total_revenue']) ?></div>
+                <div class="stat-number"><?= formatPrice((float)($stats['total_revenue'] ?? 0)) ?></div>
                 <div class="stat-label"><?= __('total_revenue') ?></div>
             </div>
             
             <div class="stat-card">
                 <div class="stat-icon">👥</div>
-                <div class="stat-number"><?= number_format($stats['total_users']) ?></div>
+                <div class="stat-number"><?= number_format((float)($stats['total_users'] ?? 0)) ?></div>
                 <div class="stat-label"><?= __('total_users') ?></div>
             </div>
             
@@ -109,7 +108,7 @@ require_once __DIR__ . '/includes/header.php';
                         <?= translateStatus($status['status']) ?>
                     </span>
                 </span>
-                <span><strong><?= number_format($status['count']) ?> <?= __('quantity') ?></strong></span>
+                <span><strong><?= number_format((float)$status['count']) ?> <?= __('quantity') ?></strong></span>
             </div>
             <?php endforeach; ?>
         </div>
@@ -122,7 +121,7 @@ require_once __DIR__ . '/includes/header.php';
             <?php 
             $max_quantity = max(array_column($popular_items, 'total_quantity')) ?: 1;
             foreach ($popular_items as $item): 
-                $percentage = ($item['total_quantity'] / $max_quantity) * 100;
+                $percentage = ((float)$item['total_quantity'] / (float)$max_quantity) * 100;
             ?>
             <div class="item-stat">
                 <div style="flex: 1;">
@@ -132,7 +131,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </div>
                 <div style="margin-left: 20px;">
-                    <strong><?= number_format($item['total_quantity']) ?> <?= __('quantity') ?></strong>
+                    <strong><?= number_format((float)$item['total_quantity']) ?> <?= __('quantity') ?></strong>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -183,6 +182,7 @@ require_once __DIR__ . '/includes/header.php';
                 <a href="menu.php" style="background: #f39c12; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">🍕 <?= __('add_menu_item') ?></a>
                 <a href="orders.php?status=pending" style="background: #27ae60; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">⏳ <?= __('view_pending_orders') ?></a>
                 <a href="reports.php" style="background: #8e44ad; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">📊 <?= __('generate_reports') ?></a>
+            </div>
         </div>
 <?php
 require_once __DIR__ . '/includes/footer.php';

@@ -1,7 +1,6 @@
 <?php
-declare(strict_types=1);
-
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../helpers.php';
 requireAdmin();
 
 $rootPath = defined('ROOT_PATH') ? ROOT_PATH : dirname(__DIR__);
