@@ -296,4 +296,27 @@ return [
     'no_events_found' => 'No past events found',
     'pizzas_sold' => 'pizzas sold',
     'total_sales_amount' => 'Total Sales',
+    
+    // Admin Menu Modernization
+    'sort_order' => 'Display Order',
+    'sort_order_help' => 'Lower numbers appear first on the customer menu',
+    'status_active' => 'Active',
+    'status_hidden' => 'Hidden',
+    'search_menu' => 'Search menu items...',
+    'filter_all' => 'All Items',
+    'edit_item' => 'Edit Pizza',
+    'cancel' => 'Cancel',
+    'item_added_success' => 'Menu item added successfully.',
+    'item_updated_success' => 'Menu item updated successfully.',
+    'item_deleted_success' => 'Menu item deleted successfully.',
+    'cannot_delete_item_has_orders' => 'This pizza has existing order history and cannot be deleted. It was deactivated (hidden from the customer menu) instead.',
+    'invalid_csrf_token' => 'Security token invalid or expired. Please refresh and try again.',
+    'invalid_price' => 'Please enter a valid positive price.',
+    'name_required' => 'Pizza name is required.',
+    'toggle_status_success' => 'Item visibility updated successfully.',
+    'drag_or_click_image' => 'Click to choose or replace photo',
+    'current_image' => 'Current Photo',
+    'confirm_delete_named' => 'Are you sure you want to delete "%s"?',
+    'close' => 'Close',
 ];
+

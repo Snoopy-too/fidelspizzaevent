@@ -296,4 +296,27 @@ return [
     'no_events_found' => '過去のイベントが見つかりません',
     'pizzas_sold' => '枚販売',
     'total_sales_amount' => '総売上',
+    
+    // 管理者メニュー刷新
+    'sort_order' => '表示順',
+    'sort_order_help' => '数字が小さいほどメニュー上で先頭に表示されます',
+    'status_active' => '表示中',
+    'status_hidden' => '非表示',
+    'search_menu' => 'メニュー項目を検索...',
+    'filter_all' => 'すべて',
+    'edit_item' => 'ピザを編集',
+    'cancel' => 'キャンセル',
+    'item_added_success' => 'メニュー項目を追加しました。',
+    'item_updated_success' => 'メニュー項目を更新しました。',
+    'item_deleted_success' => 'メニュー項目を削除しました。',
+    'cannot_delete_item_has_orders' => 'このピザには過去の注文履歴があるため削除できません。代わりにメニューから非表示に設定しました。',
+    'invalid_csrf_token' => 'セキュリティトークンが無効または期限切れです。ページを更新して再度お試しください。',
+    'invalid_price' => '有効な価格（0以上の数字）を入力してください。',
+    'name_required' => 'ピザ名を入力してください。',
+    'toggle_status_success' => '表示状態を更新しました。',
+    'drag_or_click_image' => '写真を選択またはドラッグ＆ドロップ',
+    'current_image' => '現在の写真',
+    'confirm_delete_named' => '「%s」を本当に削除しますか？',
+    'close' => '閉じる',
 ];
+
