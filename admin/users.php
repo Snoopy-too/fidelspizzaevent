@@ -1,6 +1,4 @@
 <?php
-declare(strict_types=1);
-
 require_once '../config.php';
 require_once __DIR__ . '/../helpers.php';
 requireAdmin();
@@ -40,23 +38,23 @@ require_once __DIR__ . '/includes/header.php';
                 <tbody>
                 <?php foreach ($users as $user): ?>
                     <tr>
-                        <td><?= htmlspecialchars($user['id']) ?></td>
-                        <td><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></td>
-                        <td><?= htmlspecialchars($user['email']) ?></td>
+                        <td><?= htmlspecialchars((string)$user['id']) ?></td>
+                        <td><?= htmlspecialchars((string)($user['first_name'] . ' ' . $user['last_name'])) ?></td>
+                        <td><?= htmlspecialchars((string)$user['email']) ?></td>
                         <td>
-                            <?php if ($user['is_confirmed']): ?>
+                            <?php if (!empty($user['is_confirmed'])): ?>
                                 <span class="status-badge status-confirmed"><?= __('confirmed') ?></span>
                             <?php else: ?>
                                 <span class="status-badge status-pending"><?= __('pending') ?></span>
                             <?php endif; ?>
                         </td>
-                        <td><?= date('Y/m/d', strtotime($user['created_at'])) ?></td>
+                        <td><?= !empty($user['created_at']) ? date('Y/m/d', strtotime((string)$user['created_at'])) : '-' ?></td>
                         <td class="action-links">
-                            <a href="user_details.php?id=<?= $user['id'] ?>" style="color: #3498db;"><?= __('details') ?></a> | 
-                            <a href="edit_user.php?id=<?= $user['id'] ?>" style="color: #f39c12;"><?= __('edit') ?></a> | 
-                            <form method="POST" action="delete_user.php" style="display:inline;" onsubmit="return confirm('<?= __('confirm_delete_user') ?>');">
-                                <input type="hidden" name="csrf_token" value="<?= getCsrfToken() ?>">
-                                <input type="hidden" name="id" value="<?= $user['id'] ?>">
+                            <a href="user_details.php?id=<?= (int)$user['id'] ?>" style="color: #3498db;"><?= __('details') ?></a> | 
+                            <a href="edit_user.php?id=<?= (int)$user['id'] ?>" style="color: #f39c12;"><?= __('edit') ?></a> | 
+                            <form method="POST" action="delete_user.php" style="display:inline;" onsubmit="return confirm('<?= htmlspecialchars((string)__('confirm_delete_user'), ENT_QUOTES) ?>');">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)getCsrfToken()) ?>">
+                                <input type="hidden" name="id" value="<?= (int)$user['id'] ?>">
                                 <button type="submit" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-weight:bold;padding:0;font-size:inherit;font-family:inherit;"><?= __('delete_user') ?></button>
                             </form>
                         </td>
