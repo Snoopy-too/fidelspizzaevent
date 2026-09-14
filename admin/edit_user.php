@@ -34,12 +34,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
     $status = isset($_POST['is_confirmed']) ? 1 : 0;
+    $marketing = isset($_POST['accepts_marketing']) ? 1 : 0;
 
-    $stmt = $db->prepare("UPDATE users SET first_name=?, last_name=?, email=?, phone=?, is_confirmed=? WHERE id=?");
-    $stmt->execute([$first, $last, $email, $phone, $status, $id]);
+    $stmt = $db->prepare("UPDATE users SET first_name=?, last_name=?, email=?, phone=?, is_confirmed=?, accepts_marketing=? WHERE id=?");
+    $stmt->execute([$first, $last, $email, $phone, $status, $marketing, $id]);
 
     setFlash('success', __('user_saved') !== 'user_saved' ? __('user_saved') : 'User updated successfully.');
-    header("Location: user_details.php?id=$id");
+    
+    $returnTo = $_POST['return_to'] ?? '';
+    if ($returnTo === 'users.php') {
+        header("Location: users.php");
+    } else {
+        header("Location: user_details.php?id=$id");
+    }
     exit;
 }
 
@@ -67,6 +74,10 @@ require_once __DIR__ . '/includes/header.php';
 
                 <label style="margin-top: 20px; font-weight: normal; display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" name="is_confirmed" <?= $user['is_confirmed'] ? 'checked' : '' ?>> <?= __('email_confirmed') ?>
+                </label>
+
+                <label style="margin-top: 10px; font-weight: normal; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" name="accepts_marketing" <?= !empty($user['accepts_marketing']) ? 'checked' : '' ?>> <?= __('opted_in') ?> (<?= __('marketing_consent') ?>)
                 </label>
 
                 <div style="margin-top: 25px; display: flex; gap: 10px; align-items: center;">

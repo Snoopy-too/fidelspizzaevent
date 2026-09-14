@@ -28,16 +28,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = __('error_email_exists');
             } else {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
+                $marketing = isset($_POST['accepts_marketing']) ? 1 : 0;
+                $unsubToken = bin2hex(random_bytes(32));
 
                 $stmt = $db->prepare("
-                    INSERT INTO users (first_name, last_name, email, phone, password_hash, is_confirmed, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, NOW())
+                    INSERT INTO users (first_name, last_name, email, phone, password_hash, is_confirmed, accepts_marketing, unsubscribe_token, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
-                $stmt->execute([$first, $last, $email, $phone, $hash, $status]);
+                $stmt->execute([$first, $last, $email, $phone, $hash, $status, $marketing, $unsubToken]);
 
                 $newId = (int)$db->lastInsertId();
                 setFlash('success', __('user_added_success') ?: 'User created successfully.');
-                header("Location: user_details.php?id=$newId");
+
+                $returnTo = $_POST['return_to'] ?? '';
+                if ($returnTo === 'users.php') {
+                    header("Location: users.php");
+                } else {
+                    header("Location: user_details.php?id=$newId");
+                }
                 exit;
             }
         }
@@ -81,6 +89,10 @@ require_once __DIR__ . '/includes/header.php';
 
                 <label style="margin-top: 20px; font-weight: normal; display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" name="is_confirmed" <?= !empty($_POST['is_confirmed']) ? 'checked' : '' ?>> <?= __('email_confirmed') ?>
+                </label>
+
+                <label style="margin-top: 10px; font-weight: normal; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" name="accepts_marketing" <?= !isset($_POST['accepts_marketing']) || !empty($_POST['accepts_marketing']) ? 'checked' : '' ?>> <?= __('opted_in') ?> (<?= __('marketing_consent') ?>)
                 </label>
 
                 <div style="margin-top: 25px; display: flex; gap: 10px; align-items: center;">
