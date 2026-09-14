@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // helpers.php - Core helper functions for security, flash messages, and status translation.
 // This file is tracked in Git and loaded across all environments to ensure reliability
 // even when config.php is preserved on remote servers.
@@ -66,3 +66,11 @@ if (!function_exists('translateStatus')) {
         return ucfirst($status);
     }
 }
+
+if (!function_exists('redirect')) {
+    function redirect(string $url): void {
+        header('Location: ' . $url);
+        exit;
+    }
+}
+

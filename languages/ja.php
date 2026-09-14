@@ -221,6 +221,7 @@ return [
     'back_to_users' => '← ユーザー一覧に戻る',
     'user_added_success' => 'ユーザーを正常に追加しました',
     'user_updated_success' => 'ユーザーを正常に更新しました',
+    'user_deleted_success' => 'ユーザーを正常に削除しました',
     'user_add_error' => 'ユーザーの追加に失敗しました',
     'user_update_error' => 'ユーザーの更新に失敗しました',
     

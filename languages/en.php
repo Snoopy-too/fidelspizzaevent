@@ -221,6 +221,7 @@ return [
     'back_to_users' => '← Back to User List',
     'user_added_success' => 'User added successfully',
     'user_updated_success' => 'User updated successfully',
+    'user_deleted_success' => 'User deleted successfully',
     'user_add_error' => 'Failed to add user',
     'user_update_error' => 'Failed to update user',
     
