@@ -27,7 +27,7 @@ require_once __DIR__ . '/includes/header.php';
                         📧 <?= __('promotions_title') ?>
                     </a>
                     <button type="button" class="btn btn-add add-user-btn" onclick="openAddUserModal()">
-                        ➕ <?= __('add_user_button') ?>
+                        <?= __('add_user_button') ?>
                     </button>
                 </div>
             </div>
