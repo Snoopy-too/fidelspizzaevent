@@ -360,5 +360,19 @@ return [
     'confirm_send_desc_all' => 'You are about to send this promotional email to <strong>ALL</strong> eligible confirmed users.',
     'confirm_send_notice' => 'Emails will be processed in background batches with live progress tracking.',
     'confirm_send_action' => '🚀 Send Campaign Now',
+    
+    // Message Templates
+    'saved_templates' => 'Message Presets / Templates',
+    'load_template' => '-- Load Saved Template --',
+    'save_as_template' => '💾 Save as Template',
+    'template_name_label' => 'Template Name',
+    'template_name_placeholder' => 'e.g. Next Pizza Night Invitation',
+    'save_template_btn' => 'Save Template',
+    'delete_template_btn' => 'Delete',
+    'confirm_delete_template' => 'Are you sure you want to delete template "%s"?',
+    'template_saved_success' => 'Template saved successfully!',
+    'template_deleted_success' => 'Template deleted.',
+    'use_as_template' => '📋 Copy to Composer',
+    'template_copied_notice' => 'Campaign content copied to composer!',
 ];
 

@@ -445,6 +445,22 @@ CREATE TABLE `promotional_campaign_recipients` (
   KEY `idx_pcr_user` (`user_id`),
   CONSTRAINT `fk_pcr_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `promotional_campaigns` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_pcr_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `promotional_templates`
+--
+
+CREATE TABLE `promotional_templates` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `admin_id` int(11) NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `subject` varchar(255) NOT NULL,
+  `body_content` mediumtext NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_promotional_templates_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 COMMIT;

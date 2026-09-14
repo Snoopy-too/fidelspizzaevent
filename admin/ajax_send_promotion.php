@@ -112,6 +112,75 @@ try {
             ]);
             break;
 
+        case 'save_template':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                http_response_code(405);
+                echo json_encode(['status' => 'error', 'message' => 'Method not allowed.']);
+                exit;
+            }
+
+            $csrfToken = (string)($_POST['csrf_token'] ?? '');
+            if (!verifyCsrfToken($csrfToken)) {
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'message' => __('invalid_csrf_token')]);
+                exit;
+            }
+
+            $adminId = (int)($_SESSION['admin_id'] ?? 0);
+            $name = trim((string)($_POST['name'] ?? ''));
+            $subject = trim((string)($_POST['subject'] ?? ''));
+            $bodyContent = trim((string)($_POST['body_content'] ?? ''));
+            $templateId = !empty($_POST['template_id']) ? (int)$_POST['template_id'] : null;
+
+            $templateUseCase = $container->getManagePromotionalTemplatesUseCase();
+            $saved = $templateUseCase->saveTemplate($adminId, $name, $subject, $bodyContent, $templateId);
+
+            echo json_encode([
+                'status' => 'success',
+                'template' => $saved->toArray(),
+                'message' => 'Template saved successfully.'
+            ]);
+            break;
+
+        case 'delete_template':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                http_response_code(405);
+                echo json_encode(['status' => 'error', 'message' => 'Method not allowed.']);
+                exit;
+            }
+
+            $csrfToken = (string)($_POST['csrf_token'] ?? '');
+            if (!verifyCsrfToken($csrfToken)) {
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'message' => __('invalid_csrf_token')]);
+                exit;
+            }
+
+            $templateId = (int)($_POST['template_id'] ?? 0);
+            if ($templateId <= 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Invalid template ID.']);
+                exit;
+            }
+
+            $templateUseCase = $container->getManagePromotionalTemplatesUseCase();
+            $deleted = $templateUseCase->deleteTemplate($templateId);
+
+            echo json_encode([
+                'status' => $deleted ? 'success' : 'error',
+                'message' => $deleted ? 'Template deleted successfully.' : 'Could not delete template.'
+            ]);
+            break;
+
+        case 'list_templates':
+            $templateUseCase = $container->getManagePromotionalTemplatesUseCase();
+            $templates = $templateUseCase->getAllTemplates();
+
+            echo json_encode([
+                'status' => 'success',
+                'templates' => $templates
+            ]);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Invalid action specified.']);

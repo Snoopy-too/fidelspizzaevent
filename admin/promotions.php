@@ -9,9 +9,13 @@ requireAdmin();
 $container = getServiceContainer();
 $userRepo = $container->getUserRepository();
 $campaignRepo = $container->getCampaignRepository();
+$templateUseCase = $container->getManagePromotionalTemplatesUseCase();
 
 // Fetch all registered users for selector
 $allUsers = $userRepo->findAllUsersForSelection();
+
+// Fetch saved templates
+$savedTemplates = $templateUseCase->getAllTemplates();
 
 // Check pre-selected user IDs from GET parameters (e.g. from users.php)
 $preselectedUserIds = [];
@@ -234,6 +238,13 @@ require_once __DIR__ . '/includes/header.php';
 .modal-btn-primary:hover {
     background: #b71c1c;
 }
+.modal-btn-success {
+    background: #27ae60;
+    color: #ffffff;
+}
+.modal-btn-success:hover {
+    background: #219653;
+}
 .modal-btn-dark {
     background: #2c3e50;
     color: #ffffff;
@@ -341,6 +352,34 @@ require_once __DIR__ . '/includes/header.php';
 
             <!-- Composer Card -->
             <div class="form-card">
+                <!-- Saved Templates Toolbar -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-grow: 1; max-width: 540px;">
+                        <label for="templateSelect" style="font-weight: 700; color: #1e293b; white-space: nowrap; font-size: 13.5px;">
+                            📑 <?= __('saved_templates') ?>:
+                        </label>
+                        <select id="templateSelect" onchange="onTemplateSelected()" style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; flex-grow: 1; background: white; cursor: pointer;">
+                            <option value=""><?= __('load_template') ?></option>
+                            <?php foreach ($savedTemplates as $tmpl): ?>
+                                <option value="<?= (int)$tmpl['id'] ?>"
+                                        data-name="<?= htmlspecialchars((string)$tmpl['name'], ENT_QUOTES, 'UTF-8') ?>"
+                                        data-subject="<?= htmlspecialchars((string)$tmpl['subject'], ENT_QUOTES, 'UTF-8') ?>"
+                                        data-body="<?= htmlspecialchars((string)$tmpl['body_content'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <?= htmlspecialchars((string)$tmpl['name'], ENT_QUOTES, 'UTF-8') ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" id="deleteTemplateBtn" title="<?= __('delete_template_btn') ?>" style="display: none; background: #e74c3c; color: white; border: none; padding: 7px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;" onclick="promptDeleteTemplate()">
+                            🗑️
+                        </button>
+                    </div>
+                    <div>
+                        <button type="button" style="background: #27ae60; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="openSaveTemplateModal()">
+                            <?= __('save_as_template') ?>
+                        </button>
+                    </div>
+                </div>
+
                 <div style="margin-bottom: 20px;">
                     <label for="campaignSubject" style="display: block; font-weight: bold; margin-bottom: 6px;">
                         <?= __('subject_label') ?> <span style="color: #e74c3c;">*</span>
@@ -423,9 +462,12 @@ require_once __DIR__ . '/includes/header.php';
                             (<?= (int)$camp['total_recipients'] ?> total)
                         </td>
                         <td><?= date('Y/m/d H:i', strtotime((string)$camp['created_at'])) ?></td>
-                        <td>
+                        <td style="white-space: nowrap;">
                             <button type="button" class="btn" style="background: #3498db; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;" onclick="openRecipientsModal(<?= (int)$camp['id'] ?>, '<?= htmlspecialchars(addslashes((string)$camp['subject']), ENT_QUOTES, 'UTF-8') ?>')">
                                 <?= __('view_delivery_log') ?>
+                            </button>
+                            <button type="button" class="btn" style="background: #8e44ad; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-left: 5px;" onclick="copyCampaignToComposer(<?= (int)$camp['id'] ?>)">
+                                <?= __('use_as_template') ?>
                             </button>
                         </td>
                     </tr>
@@ -486,7 +528,38 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- 2. STYLED APP ALERT MODAL -->
+<!-- 2. STYLED SAVE TEMPLATE MODAL -->
+<div id="saveTemplateModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>💾 <?= __('save_as_template') ?></h3>
+            <button type="button" class="modal-close" onclick="closeModal('saveTemplateModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="margin-bottom: 16px;">
+                <label for="templateNameInput" style="display: block; font-weight: 700; margin-bottom: 6px; color: #1e293b;">
+                    <?= __('template_name_label') ?> <span style="color: #e74c3c;">*</span>
+                </label>
+                <input type="text" id="templateNameInput" class="form-control" style="width: 100%; padding: 10px 12px; font-size: 14.5px; border: 1px solid #ced4da; border-radius: 6px;" placeholder="<?= htmlspecialchars((string)__('template_name_placeholder'), ENT_QUOTES, 'UTF-8') ?>" required>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; font-size: 13px;">
+                <p style="margin: 0 0 4px 0; color: #64748b;"><strong>Subject to save:</strong></p>
+                <p id="saveTemplateSubjectPreview" style="margin: 0; font-weight: 600; color: #1e293b; word-break: break-word;">-</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('saveTemplateModal')">
+                <?= __('cancel') ?>
+            </button>
+            <button type="button" id="saveTemplateBtn" class="modal-btn modal-btn-success" onclick="executeSaveTemplate()">
+                <?= __('save_template_btn') ?>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 3. STYLED APP ALERT MODAL -->
 <div id="appAlertModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 440px;">
         <div class="modal-header">
@@ -505,7 +578,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- 3. PREVIEW MODAL -->
+<!-- 4. PREVIEW MODAL -->
 <div id="previewModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 750px;">
         <div class="modal-header">
@@ -525,7 +598,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- 4. RECIPIENTS LOG MODAL -->
+<!-- 5. RECIPIENTS LOG MODAL -->
 <div id="recipientsModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 750px;">
         <div class="modal-header">
@@ -553,6 +626,9 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <script>
+// Preloaded campaign history for 1-click reuse
+const historicalCampaigns = <?= json_encode(array_column($campaigns, null, 'id'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
 function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -617,7 +693,7 @@ function insertTag(tag) {
     textarea.selectionStart = textarea.selectionEnd = start + tag.length;
 }
 
-// Modal opening/closing with animated classes
+// Modal controls
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -632,7 +708,7 @@ function closeModal(modalId) {
     }
 }
 
-// Close on Escape or click outside
+// Close on Escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay.is-open').forEach(m => m.classList.remove('is-open'));
@@ -663,6 +739,177 @@ function showAppAlert(message, title = 'Notice', icon = '⚠️') {
     openModal('appAlertModal');
 }
 
+// ===== TEMPLATE MANAGEMENT FUNCTIONS =====
+function onTemplateSelected() {
+    const select = document.getElementById('templateSelect');
+    const deleteBtn = document.getElementById('deleteTemplateBtn');
+    const selectedOption = select.options[select.selectedIndex];
+
+    if (select.value && selectedOption) {
+        const subject = selectedOption.getAttribute('data-subject') || '';
+        const body = selectedOption.getAttribute('data-body') || '';
+
+        document.getElementById('campaignSubject').value = subject;
+        document.getElementById('campaignBody').value = body;
+        deleteBtn.style.display = 'inline-block';
+    } else {
+        deleteBtn.style.display = 'none';
+    }
+}
+
+function openSaveTemplateModal() {
+    const subject = document.getElementById('campaignSubject').value.trim();
+    const bodyContent = document.getElementById('campaignBody').value.trim();
+
+    if (!subject) {
+        showAppAlert('Please enter a subject line before saving as a template.', 'Subject Required', '✍️');
+        document.getElementById('campaignSubject').focus();
+        return;
+    }
+    if (!bodyContent) {
+        showAppAlert('Please enter the email body before saving as a template.', 'Message Content Required', '📝');
+        document.getElementById('campaignBody').focus();
+        return;
+    }
+
+    const select = document.getElementById('templateSelect');
+    const currentOption = select.options[select.selectedIndex];
+    const nameInput = document.getElementById('templateNameInput');
+    
+    if (select.value && currentOption) {
+        nameInput.value = currentOption.getAttribute('data-name') || '';
+    } else {
+        nameInput.value = subject;
+    }
+
+    document.getElementById('saveTemplateSubjectPreview').textContent = subject;
+    openModal('saveTemplateModal');
+}
+
+async function executeSaveTemplate() {
+    const name = document.getElementById('templateNameInput').value.trim();
+    const subject = document.getElementById('campaignSubject').value.trim();
+    const bodyContent = document.getElementById('campaignBody').value.trim();
+    const csrfToken = document.getElementById('csrfToken').value;
+    const select = document.getElementById('templateSelect');
+    const templateId = select.value || '';
+
+    if (!name) {
+        showAppAlert('Please enter a name for this template.', 'Template Name Required', '✍️');
+        document.getElementById('templateNameInput').focus();
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('name', name);
+    formData.append('subject', subject);
+    formData.append('body_content', bodyContent);
+    if (templateId) {
+        formData.append('template_id', templateId);
+    }
+
+    try {
+        const res = await fetch('ajax_send_promotion.php?action=save_template', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            closeModal('saveTemplateModal');
+            showAppAlert(<?= json_encode(__('template_saved_success')) ?>, 'Template Saved', '✓');
+            await refreshTemplatesList(data.template.id);
+        } else {
+            showAppAlert(data.message || 'Failed to save template.', 'Save Error', '❌');
+        }
+    } catch (e) {
+        showAppAlert('Network error: ' + e.message, 'Network Error', '🌐');
+    }
+}
+
+async function promptDeleteTemplate() {
+    const select = document.getElementById('templateSelect');
+    const templateId = select.value;
+    if (!templateId) return;
+
+    const selectedOption = select.options[select.selectedIndex];
+    const templateName = selectedOption.getAttribute('data-name') || '';
+    const csrfToken = document.getElementById('csrfToken').value;
+
+    const confirmMsg = <?= json_encode(__('confirm_delete_template')) ?>.replace('%s', templateName);
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('template_id', templateId);
+
+    try {
+        const res = await fetch('ajax_send_promotion.php?action=delete_template', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            await refreshTemplatesList('');
+            showAppAlert(<?= json_encode(__('template_deleted_success')) ?>, 'Template Deleted', '🗑️');
+        } else {
+            showAppAlert(data.message || 'Could not delete template.', 'Error', '❌');
+        }
+    } catch (e) {
+        showAppAlert('Network error: ' + e.message, 'Network Error', '🌐');
+    }
+}
+
+async function refreshTemplatesList(selectedIdToSelect = '') {
+    try {
+        const res = await fetch('ajax_send_promotion.php?action=list_templates');
+        const data = await res.json();
+        if (data.status === 'success') {
+            const select = document.getElementById('templateSelect');
+            select.innerHTML = '<option value="">' + <?= json_encode(__('load_template')) ?> + '</option>';
+            data.templates.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = t.name;
+                opt.setAttribute('data-name', t.name);
+                opt.setAttribute('data-subject', t.subject);
+                opt.setAttribute('data-body', t.body_content);
+                if (String(t.id) === String(selectedIdToSelect)) {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
+            });
+            onTemplateSelected();
+        }
+    } catch (e) {
+        console.error('Failed to refresh templates:', e);
+    }
+}
+
+// 1-Click copy from historical campaigns into composer
+function copyCampaignToComposer(campaignId) {
+    const camp = historicalCampaigns[campaignId];
+    if (!camp) return;
+
+    document.getElementById('campaignSubject').value = camp.subject || '';
+    document.getElementById('campaignBody').value = camp.body_content || '';
+    
+    // Reset template select to neutral
+    const select = document.getElementById('templateSelect');
+    select.value = '';
+    document.getElementById('deleteTemplateBtn').style.display = 'none';
+
+    switchTab('compose');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    showAppAlert(<?= json_encode(__('template_copied_notice')) ?>, 'Copied to Composer', '📋');
+}
+
+// ===== PREVIEW MODAL =====
 function openPreviewModal() {
     const subject = document.getElementById('campaignSubject').value.trim();
     const bodyContent = document.getElementById('campaignBody').value.trim();
@@ -714,6 +961,7 @@ function openPreviewModal() {
     });
 }
 
+// ===== LOG MODAL =====
 function openRecipientsModal(campaignId, title) {
     document.getElementById('logCampaignTitle').textContent = title;
     document.getElementById('logLoading').style.display = 'block';
@@ -759,7 +1007,6 @@ function openRecipientsModal(campaignId, title) {
 // Global cached campaign dispatch state
 let pendingDispatchState = null;
 
-// Prompt styled confirmation modal
 function promptSendConfirmation() {
     const subject = document.getElementById('campaignSubject').value.trim();
     const bodyContent = document.getElementById('campaignBody').value.trim();
@@ -788,7 +1035,6 @@ function promptSendConfirmation() {
         }
     }
 
-    // Populate styled confirmation modal
     const subtextEl = document.getElementById('confirmRecipientSubtext');
     if (mode === 'selected') {
         subtextEl.innerHTML = <?= json_encode(__('confirm_send_desc_selected')) ?>.replace('%d', selectedIds.length);
@@ -798,7 +1044,6 @@ function promptSendConfirmation() {
 
     document.getElementById('confirmSubjectPreview').textContent = subject;
 
-    // Cache state for execution
     pendingDispatchState = {
         subject: subject,
         bodyContent: bodyContent,
@@ -809,7 +1054,6 @@ function promptSendConfirmation() {
     openModal('confirmSendModal');
 }
 
-// Execute sending after modal confirmation
 async function executeCampaignSending() {
     closeModal('confirmSendModal');
 
@@ -820,12 +1064,10 @@ async function executeCampaignSending() {
     const { subject, bodyContent, csrfToken, selectedIds } = pendingDispatchState;
     pendingDispatchState = null;
 
-    // Disable start button
     const startBtn = document.getElementById('startSendBtn');
     startBtn.disabled = true;
     startBtn.style.opacity = '0.6';
 
-    // Show progress box
     const progressBox = document.getElementById('progressCard');
     const progressBar = document.getElementById('progressBarFill');
     const progressStats = document.getElementById('progressStats');
@@ -841,10 +1083,8 @@ async function executeCampaignSending() {
     errorsDiv.innerHTML = '';
     successMsg.style.display = 'none';
 
-    // Scroll progress card into view smoothly
     progressBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    // 1. Create Campaign
     const formData = new FormData();
     formData.append('csrf_token', csrfToken);
     formData.append('subject', subject);
@@ -867,7 +1107,6 @@ async function executeCampaignSending() {
 
         progressStats.textContent = `0 / ${totalRecipients}`;
 
-        // 2. Loop batches
         let isFinished = false;
         let totalSent = 0;
         let totalFailed = 0;
@@ -912,7 +1151,6 @@ async function executeCampaignSending() {
             }
         }
 
-        // Finished!
         progressBar.style.width = '100%';
         progressPercent.textContent = '100%';
         successMsg.style.display = 'block';

@@ -360,5 +360,19 @@ return [
     'confirm_send_desc_all' => 'マーケティング承諾済みの<strong>全登録ユーザー</strong>にプロモーションメールを送信します。',
     'confirm_send_notice' => 'メールはバックグラウンドで順次バッチ送信され、進捗状況がリアルタイムで表示されます。',
     'confirm_send_action' => '🚀 送信を開始する',
+    
+    // テンプレート管理
+    'saved_templates' => '保存済みテンプレート',
+    'load_template' => '-- テンプレートを読み込む --',
+    'save_as_template' => '💾 テンプレートとして保存',
+    'template_name_label' => 'テンプレート名',
+    'template_name_placeholder' => '例：次回ピザイベントのご案内',
+    'save_template_btn' => 'テンプレートを保存',
+    'delete_template_btn' => '削除',
+    'confirm_delete_template' => 'テンプレート「%s」を削除しますか？',
+    'template_saved_success' => 'テンプレートを保存しました。',
+    'template_deleted_success' => 'テンプレートを削除しました。',
+    'use_as_template' => '📋 作成画面にコピー',
+    'template_copied_notice' => 'キャンペーン内容を作成画面にコピーしました！',
 ];
 

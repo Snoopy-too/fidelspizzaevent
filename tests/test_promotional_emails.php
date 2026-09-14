@@ -145,7 +145,25 @@ assertTrue($marketingStatus === 0, "User accepts_marketing updated to 0 in datab
 // Cleanup test user
 $db->prepare("DELETE FROM `users` WHERE id = ?")->execute([$tempUserId]);
 
-// TEST 7: Clean up test campaign
+// TEST 7: Template Management (Save, Load, Delete)
+$templateUseCase = $container->getManagePromotionalTemplatesUseCase();
+$savedTemplate = $templateUseCase->saveTemplate(
+    adminId: 1,
+    name: "Test Template " . date('Ymd_His'),
+    subject: "Special Offer {{first_name}}!",
+    bodyContent: "Hello {{first_name}}, this is a saved template test."
+);
+
+assertTrue($savedTemplate->getId() !== null && $savedTemplate->getId() > 0, "Template saved to MySQL with generated ID #" . ($savedTemplate->getId() ?? 0));
+
+$allTemplates = $templateUseCase->getAllTemplates();
+$found = array_filter($allTemplates, fn($t) => $t['id'] === $savedTemplate->getId());
+assertTrue(!empty($found), "Saved template retrieved from template list");
+
+$deleted = $templateUseCase->deleteTemplate($savedTemplate->getId());
+assertTrue($deleted === true, "Template successfully deleted from database");
+
+// Cleanup test campaign
 $db->prepare("DELETE FROM `promotional_campaigns` WHERE id = ?")->execute([$campaign->getId()]);
 assertTrue(true, "Test artifacts cleaned up successfully");
 

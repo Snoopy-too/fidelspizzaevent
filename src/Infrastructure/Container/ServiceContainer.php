@@ -105,4 +105,25 @@ final class ServiceContainer
         }
         return $this->unsubscribeUserUseCase;
     }
+
+    private ?\FidelsPizza\Domain\Repository\PromotionalTemplateRepositoryInterface $templateRepository = null;
+    private ?\FidelsPizza\Application\UseCase\ManagePromotionalTemplatesUseCase $managePromotionalTemplatesUseCase = null;
+
+    public function getTemplateRepository(): \FidelsPizza\Domain\Repository\PromotionalTemplateRepositoryInterface
+    {
+        if ($this->templateRepository === null) {
+            $this->templateRepository = new \FidelsPizza\Infrastructure\Persistence\PdoPromotionalTemplateRepository($this->pdo);
+        }
+        return $this->templateRepository;
+    }
+
+    public function getManagePromotionalTemplatesUseCase(): \FidelsPizza\Application\UseCase\ManagePromotionalTemplatesUseCase
+    {
+        if ($this->managePromotionalTemplatesUseCase === null) {
+            $this->managePromotionalTemplatesUseCase = new \FidelsPizza\Application\UseCase\ManagePromotionalTemplatesUseCase(
+                $this->getTemplateRepository()
+            );
+        }
+        return $this->managePromotionalTemplatesUseCase;
+    }
 }
