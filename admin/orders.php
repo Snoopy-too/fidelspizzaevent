@@ -287,7 +287,7 @@ require_once __DIR__ . '/includes/header.php';
                                 data-label-total-records="<?= htmlspecialchars((string)__('pdf_total_records')) ?>"
                                 data-label-filters="<?= htmlspecialchars((string)__('pdf_active_filters')) ?>"
                                 data-filter-info="<?= htmlspecialchars((string)$activeFilterSummary) ?>"
-                                data-orientation="landscape"
+                                data-orientation="portrait"
                                 data-filename="orders_<?= date('Y-m-d') ?>.pdf">
                             📄 <?= htmlspecialchars((string)__('export_pdf')) ?>
                         </button>

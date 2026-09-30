@@ -152,10 +152,10 @@
         // Build temporary export container
         const exportContainer = document.createElement('div');
         exportContainer.className = 'pdf-export-wrapper';
-        exportContainer.style.width = isLandscape ? '1060px' : '760px';
+        exportContainer.style.width = isLandscape ? '1060px' : '750px';
         exportContainer.style.background = '#ffffff';
         exportContainer.style.color = '#2c3e50';
-        exportContainer.style.padding = '20px 24px';
+        exportContainer.style.padding = isLandscape ? '20px 24px' : '16px 18px';
         exportContainer.style.boxSizing = 'border-box';
         exportContainer.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif';
 
@@ -167,12 +167,17 @@
             filterHtml = `<div><strong>${escapeHtml(labelFilters)}:</strong> ${escapeHtml(filterInfo)}</div>`;
         }
 
+        const thPadding = isLandscape ? '7px 6px' : '6px 4px';
+        const thFontSize = isLandscape ? '10px' : '9px';
+        const tdPadding = isLandscape ? '6px 6px' : '5px 4px';
+        const tdFontSize = isLandscape ? '9.5px' : '8.5px';
+
         let tableHeaderHtml = '<tr>';
         includedCols.forEach(col => {
             const isAmount = /amount|金額|total/i.test(col.title);
             const isStatus = /status|ステータス/i.test(col.title);
             const align = isAmount ? 'right' : (isStatus ? 'center' : 'left');
-            tableHeaderHtml += `<th style="text-align: ${align}; padding: 7px 6px; font-size: 10px; background-color: #2c3e50; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; white-space: nowrap;">${escapeHtml(col.title)}</th>`;
+            tableHeaderHtml += `<th style="text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: #2c3e50; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; white-space: nowrap;">${escapeHtml(col.title)}</th>`;
         });
         tableHeaderHtml += '</tr>';
 
@@ -183,7 +188,7 @@
             row.forEach(cell => {
                 const align = cell.isAmount ? 'right' : (cell.isStatus ? 'center' : 'left');
                 const weight = cell.isOrderNum ? 'font-weight: 600;' : '';
-                tableBodyHtml += `<td style="text-align: ${align}; ${weight} padding: 6px 6px; font-size: 9.5px; border: 1px solid #dcdcdc; vertical-align: top; word-break: break-word; line-height: 1.35;">${cell.content}</td>`;
+                tableBodyHtml += `<td style="text-align: ${align}; ${weight} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; vertical-align: top; word-break: break-word; line-height: 1.35;">${cell.content}</td>`;
             });
             tableBodyHtml += '</tr>';
         });
@@ -192,9 +197,9 @@
             <style>
                 .pdf-status-badge {
                     display: inline-block;
-                    padding: 2px 6px;
+                    padding: 2px ${isLandscape ? '6px' : '4px'};
                     border-radius: 4px;
-                    font-size: 8.5px;
+                    font-size: ${isLandscape ? '8.5px' : '8px'};
                     font-weight: bold;
                     text-transform: uppercase;
                     text-align: center;
