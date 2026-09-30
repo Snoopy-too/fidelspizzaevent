@@ -152,13 +152,10 @@
         // Build temporary export container
         const exportContainer = document.createElement('div');
         exportContainer.className = 'pdf-export-wrapper';
-        exportContainer.style.position = 'fixed';
-        exportContainer.style.left = '-9999px';
-        exportContainer.style.top = '0';
-        exportContainer.style.width = isLandscape ? '1100px' : '780px';
+        exportContainer.style.width = isLandscape ? '1060px' : '760px';
         exportContainer.style.background = '#ffffff';
         exportContainer.style.color = '#2c3e50';
-        exportContainer.style.padding = '24px 30px';
+        exportContainer.style.padding = '20px 24px';
         exportContainer.style.boxSizing = 'border-box';
         exportContainer.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif';
 
@@ -236,8 +233,6 @@
             </div>
         `;
 
-        document.body.appendChild(exportContainer);
-
         const pdfOptions = {
             margin: [8, 8, 8, 8],
             filename: filename,
@@ -246,7 +241,8 @@
                 scale: 2,
                 useCORS: true,
                 logging: false,
-                windowWidth: isLandscape ? 1160 : 840
+                scrollX: 0,
+                scrollY: 0
             },
             jsPDF: {
                 unit: 'mm',
