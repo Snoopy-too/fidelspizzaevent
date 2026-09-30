@@ -162,6 +162,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 1px solid #e57373;
         }
         
+        .alert.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #81c784;
+        }
+        
         .links {
             text-align: center;
             margin-top: 20px;
@@ -202,6 +208,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="pizza-icon">🍕</div>
         <h1><?= __('welcome_back') ?></h1>
         
+        <?php
+        $flash = function_exists('getFlash') ? getFlash() : null;
+        if ($flash && !empty($flash['message'])):
+            $flashType = ($flash['type'] ?? '') === 'success' ? 'success' : 'error';
+        ?>
+            <div class="alert <?= $flashType ?>"><?= htmlspecialchars((string)$flash['message'], ENT_QUOTES, 'UTF-8') ?></div>
+        <?php endif; ?>
+
         <?php if ($error): ?>
             <div class="alert"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>

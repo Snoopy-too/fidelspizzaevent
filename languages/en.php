@@ -410,6 +410,32 @@ return [
     'change_pickup_time' => 'Pickup Time',
     'quick_select_slot' => 'Quick-select slot:',
     'view_customer_site' => 'View Customer Site ↗',
+
+    // Password Recovery & Reset
+    'forgot_password_title' => 'Forgot Password',
+    'forgot_password_desc' => 'Enter your registered email address and we will send you a secure link to reset your password.',
+    'send_reset_link_btn' => 'Send Reset Link',
+    'forgot_password_sent_msg' => 'If an account with that email address exists, we have sent password reset instructions. Please check your inbox (and spam folder).',
+    'error_reset_rate_limit' => 'Too many password reset requests. Please wait 15 minutes before trying again.',
+    'reset_password_title' => 'Reset Your Password',
+    'reset_password_desc' => 'Please enter a new password for your account (%s).',
+    'new_password_label' => 'New Password:',
+    'confirm_new_password_label' => 'Confirm New Password:',
+    'password_min_length_hint' => 'At least 6 characters',
+    'reset_password_button' => 'Save New Password',
+    'error_invalid_or_expired_reset_token' => 'This password reset link is invalid or has expired. Please request a new link.',
+    'success_password_reset' => 'Your password has been reset successfully! You can now log in with your new password.',
+    'back_to_login' => '← Back to Login',
+    'request_new_reset_link' => 'Request a New Reset Link',
+    'invalid_csrf_token' => 'Invalid security token. Please refresh the page and try again.',
+    'invalid_request' => 'Invalid security token. Please refresh the page and try again.',
+    'new_password_optional' => 'New Password (optional)',
+    'leave_blank_keep_password' => 'Leave blank to keep the current password (min. 6 characters).',
+    'send_password_reset_email_btn' => '🔑 Send Password Reset Email',
+    'password_reset_email_sent_admin' => 'Password reset email sent to %s.',
+    'password_reset_email_failed_admin' => 'Failed to send password reset email to %s.',
+    'show_password' => 'Show',
+    'hide_password' => 'Hide',
 ];
 
 

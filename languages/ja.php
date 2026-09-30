@@ -410,6 +410,32 @@ return [
     'change_pickup_time' => '受取時間の変更',
     'quick_select_slot' => '設定済み枠から選択：',
     'view_customer_site' => '顧客サイトを表示 ↗',
+
+    // パスワード再設定・リカバリー
+    'forgot_password_title' => 'パスワードの再設定',
+    'forgot_password_desc' => 'ご登録のメールアドレスを入力してください。パスワード再設定用の安全なリンクをお送りします。',
+    'send_reset_link_btn' => '再設定リンクを送信',
+    'forgot_password_sent_msg' => 'ご入力いただいたメールアドレスが登録されている場合、パスワード再設定のご案内メールを送信しました。受信トレイ（および迷惑メールフォルダ）をご確認ください。',
+    'error_reset_rate_limit' => 'リクエスト回数が上限に達しました。15分ほど時間をおいてから再度お試しください。',
+    'reset_password_title' => '新しいパスワードの設定',
+    'reset_password_desc' => 'アカウント（%s）の新しいパスワードを入力してください。',
+    'new_password_label' => '新しいパスワード：',
+    'confirm_new_password_label' => '新しいパスワード（確認）：',
+    'password_min_length_hint' => '6文字以上',
+    'reset_password_button' => '新しいパスワードを保存',
+    'error_invalid_or_expired_reset_token' => 'このパスワード再設定リンクは無効か、有効期限が切れています。もう一度リンクをリクエストしてください。',
+    'success_password_reset' => 'パスワードが正常に再設定されました！新しいパスワードでログインしてください。',
+    'back_to_login' => '← ログイン画面に戻る',
+    'request_new_reset_link' => '新しい再設定リンクをリクエストする',
+    'invalid_csrf_token' => 'セキュリティトークンが無効です。ページを再読み込みしてもう一度お試しください。',
+    'invalid_request' => '不正なリクエストです。もう一度お試しください。',
+    'new_password_optional' => '新しいパスワード（変更する場合のみ）',
+    'leave_blank_keep_password' => '現在のパスワードを維持する場合は空欄のままにしてください（6文字以上）。',
+    'send_password_reset_email_btn' => '🔑 パスワード再設定メールを送信',
+    'password_reset_email_sent_admin' => 'パスワード再設定メールを %s に送信しました。',
+    'password_reset_email_failed_admin' => '%s へのパスワード再設定メール送信に失敗しました。',
+    'show_password' => '表示',
+    'hide_password' => '隠す',
 ];
 
 

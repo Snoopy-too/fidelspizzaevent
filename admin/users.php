@@ -281,6 +281,25 @@ require_once __DIR__ . '/includes/header.php';
                         <input type="text" id="editPhone" name="phone">
                     </div>
 
+                    <div class="form-group">
+                        <label for="editNewPassword"><?= htmlspecialchars((string)__('new_password_optional'), ENT_QUOTES, 'UTF-8') ?></label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="password"
+                                   id="editNewPassword"
+                                   name="new_password"
+                                   minlength="6"
+                                   autocomplete="new-password"
+                                   placeholder="<?= htmlspecialchars((string)__('leave_blank_keep_password'), ENT_QUOTES, 'UTF-8') ?>">
+                            <button type="button"
+                                    class="modal-btn modal-btn-cancel"
+                                    style="padding: 8px 12px; font-size: 0.85em; white-space: nowrap;"
+                                    onclick="toggleModalPasswordVisibility('editNewPassword', this)">
+                                <?= htmlspecialchars((string)__('show_password'), ENT_QUOTES, 'UTF-8') ?>
+                            </button>
+                        </div>
+                        <small style="color: #64748b; display: block; margin-top: 4px;"><?= htmlspecialchars((string)__('leave_blank_keep_password'), ENT_QUOTES, 'UTF-8') ?></small>
+                    </div>
+
                     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; margin-top: 5px;">
                         <label style="margin: 0; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="editIsConfirmed" name="is_confirmed" style="width: 18px; height: 18px; cursor: pointer;">
@@ -292,7 +311,10 @@ require_once __DIR__ . '/includes/header.php';
                         </label>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="flex-wrap: wrap; gap: 8px;">
+                    <button type="submit" name="send_reset_email" value="1" class="modal-btn modal-btn-cancel" style="margin-right: auto;" formnovalidate>
+                        <?= htmlspecialchars((string)__('send_password_reset_email_btn'), ENT_QUOTES, 'UTF-8') ?>
+                    </button>
                     <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('userEditModal')"><?= __('cancel') ?></button>
                     <button type="submit" class="modal-btn modal-btn-primary">💾 <?= __('save_user') ?></button>
                 </div>
@@ -518,9 +540,26 @@ require_once __DIR__ . '/includes/header.php';
         document.getElementById('editLastName').value = user.last_name || '';
         document.getElementById('editEmail').value = user.email || '';
         document.getElementById('editPhone').value = user.phone || '';
+        const pwdField = document.getElementById('editNewPassword');
+        if (pwdField) {
+            pwdField.value = '';
+            pwdField.type = 'password';
+        }
         document.getElementById('editIsConfirmed').checked = !!user.is_confirmed;
         document.getElementById('editAcceptsMarketing').checked = !!user.accepts_marketing;
         openModal('userEditModal');
+    }
+
+    function toggleModalPasswordVisibility(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = <?= json_encode((string)__('hide_password')) ?>;
+        } else {
+            input.type = 'password';
+            btn.textContent = <?= json_encode((string)__('show_password')) ?>;
+        }
     }
 
     // Transition from details to edit

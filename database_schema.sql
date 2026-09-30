@@ -495,6 +495,28 @@ ALTER TABLE `orders`
   ADD KEY `idx_orders_pickup_slot` (`pickup_slot_id`),
   ADD CONSTRAINT `fk_orders_pickup_slot` FOREIGN KEY (`pickup_slot_id`) REFERENCES `pickup_time_slots` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `password_reset_tokens`
+--
+
+CREATE TABLE `password_reset_tokens` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `selector` char(16) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `requested_ip` varchar(45) DEFAULT NULL,
+  `expires_at` datetime NOT NULL,
+  `used_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_prt_selector` (`selector`),
+  KEY `idx_prt_user_created` (`user_id`, `created_at`),
+  KEY `idx_prt_ip_created` (`requested_ip`, `created_at`),
+  CONSTRAINT `fk_password_reset_tokens_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

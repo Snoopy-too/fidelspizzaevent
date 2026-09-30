@@ -161,4 +161,46 @@ final class ServiceContainer
         }
         return $this->sendOrderNotificationUseCase;
     }
+
+    private ?\FidelsPizza\Domain\Repository\PasswordResetRepositoryInterface $passwordResetRepository = null;
+    private ?\FidelsPizza\Application\UseCase\RequestPasswordResetUseCase $requestPasswordResetUseCase = null;
+    private ?\FidelsPizza\Application\UseCase\ResetPasswordUseCase $resetPasswordUseCase = null;
+
+    public function getPasswordResetRepository(): \FidelsPizza\Domain\Repository\PasswordResetRepositoryInterface
+    {
+        if ($this->passwordResetRepository === null) {
+            $this->passwordResetRepository = new \FidelsPizza\Infrastructure\Persistence\PdoPasswordResetRepository($this->pdo);
+        }
+        return $this->passwordResetRepository;
+    }
+
+    public function getRequestPasswordResetUseCase(
+        ?\FidelsPizza\Domain\Service\EmailSenderInterface $overrideEmailSender = null
+    ): \FidelsPizza\Application\UseCase\RequestPasswordResetUseCase {
+        if ($overrideEmailSender !== null) {
+            return new \FidelsPizza\Application\UseCase\RequestPasswordResetUseCase(
+                $this->getPasswordResetRepository(),
+                $overrideEmailSender,
+                $this->siteConfig
+            );
+        }
+        if ($this->requestPasswordResetUseCase === null) {
+            $this->requestPasswordResetUseCase = new \FidelsPizza\Application\UseCase\RequestPasswordResetUseCase(
+                $this->getPasswordResetRepository(),
+                $this->getEmailSender(),
+                $this->siteConfig
+            );
+        }
+        return $this->requestPasswordResetUseCase;
+    }
+
+    public function getResetPasswordUseCase(): \FidelsPizza\Application\UseCase\ResetPasswordUseCase
+    {
+        if ($this->resetPasswordUseCase === null) {
+            $this->resetPasswordUseCase = new \FidelsPizza\Application\UseCase\ResetPasswordUseCase(
+                $this->getPasswordResetRepository()
+            );
+        }
+        return $this->resetPasswordUseCase;
+    }
 }
