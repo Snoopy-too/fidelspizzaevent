@@ -11,22 +11,22 @@ if (isAdmin()) {
 
 // Handle admin login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = sanitize($_POST['username'] ?? '');
-    $password = $_POST['password'] ?? '';
+    $loginInput = trim((string)($_POST['username'] ?? ''));
+    $password = (string)($_POST['password'] ?? '');
     
-    if (empty($username) || empty($password)) {
+    if ($loginInput === '' || $password === '') {
         $error = __('error_username_password_required');
     } else {
         try {
             $db = getDB();
-            $stmt = $db->prepare("SELECT id, password_hash FROM admins WHERE username = ?");
-            $stmt->execute([$username]);
+            $stmt = $db->prepare("SELECT id, username, password_hash FROM admins WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1");
+            $stmt->execute([$loginInput, $loginInput]);
             $admin = $stmt->fetch();
             
             if ($admin && verifyPassword($password, $admin['password_hash'])) {
                 // Set admin session
                 $_SESSION['admin_id'] = $admin['id'];
-                $_SESSION['admin_username'] = $username;
+                $_SESSION['admin_username'] = $admin['username'];
                 
                 // Create session record
                 $session_id = session_id();

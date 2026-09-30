@@ -42,7 +42,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     redirect('menu.php');
                 }
             } else {
-                $error = __('error_invalid_credentials');
+                // Also check if an administrator is logging in with their admin email on this page
+                $adminStmt = $db->prepare("SELECT id, username, password_hash FROM admins WHERE LOWER(email) = LOWER(?) LIMIT 1");
+                $adminStmt->execute([$email]);
+                $admin = $adminStmt->fetch();
+
+                if ($admin && verifyPassword($password, $admin['password_hash'])) {
+                    $_SESSION['admin_id'] = $admin['id'];
+                    $_SESSION['admin_username'] = $admin['username'];
+
+                    $session_id = session_id();
+                    $expires_at = date('Y-m-d H:i:s', time() + ADMIN_SESSION_TIMEOUT);
+                    $stmt = $db->prepare("INSERT INTO user_sessions (id, admin_id, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE expires_at = ?");
+                    $stmt->execute([$session_id, $admin['id'], $expires_at, $expires_at]);
+
+                    redirect('admin/dashboard.php');
+                } else {
+                    $error = __('error_invalid_credentials');
+                }
             }
         } catch (Exception $e) {
             $error = __('error_login_failed');
