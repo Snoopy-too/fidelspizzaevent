@@ -119,12 +119,23 @@ final class ResetPasswordUseCase
      *
      * @return array{success: bool, error_code: ?string}
      */
-    public function adminResetPassword(int $userId, string $newPassword): array
-    {
+    public function adminResetPassword(
+        int $userId,
+        string $newPassword,
+        ?string $confirmPassword = null,
+        bool $confirmEmail = false
+    ): array {
         if (strlen($newPassword) < self::MIN_PASSWORD_LENGTH) {
             return [
                 'success' => false,
                 'error_code' => 'error_password_length',
+            ];
+        }
+
+        if ($confirmPassword !== null && !hash_equals($newPassword, $confirmPassword)) {
+            return [
+                'success' => false,
+                'error_code' => 'error_password_mismatch',
             ];
         }
 
@@ -137,7 +148,7 @@ final class ResetPasswordUseCase
         }
 
         $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT, ['cost' => 10]);
-        $updated = $this->repository->updateUserPassword($userId, $passwordHash);
+        $updated = $this->repository->updateUserPassword($userId, $passwordHash, $confirmEmail);
 
         return [
             'success' => $updated,

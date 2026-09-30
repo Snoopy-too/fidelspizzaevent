@@ -436,6 +436,13 @@ return [
     'password_reset_email_failed_admin' => 'Failed to send password reset email to %s.',
     'show_password' => 'Show',
     'hide_password' => 'Hide',
+    'change_password_action' => '🔑 Password',
+    'change_customer_password_title' => 'Change Customer Password',
+    'change_customer_password_desc' => 'Set a new password directly for this customer. Their active sessions will be signed out so they can log in with the new password.',
+    'generate_password_btn' => '🎲 Generate',
+    'update_password_btn' => '🔑 Update Password',
+    'admin_password_changed_success' => 'Password for %s (%s) has been changed successfully.',
+    'also_confirm_email_label' => 'Also mark email as confirmed (allows immediate login)',
 ];
 
 

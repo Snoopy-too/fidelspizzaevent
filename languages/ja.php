@@ -436,6 +436,13 @@ return [
     'password_reset_email_failed_admin' => '%s へのパスワード再設定メール送信に失敗しました。',
     'show_password' => '表示',
     'hide_password' => '隠す',
+    'change_password_action' => '🔑 パスワード',
+    'change_customer_password_title' => '顧客パスワードの変更',
+    'change_customer_password_desc' => 'この顧客の新しいパスワードを直接設定します。設定後、顧客は新しいパスワードですぐにログインできるようになります。',
+    'generate_password_btn' => '🎲 自動生成',
+    'update_password_btn' => '🔑 パスワードを更新',
+    'admin_password_changed_success' => '%s 様（%s）のパスワードを正常に変更しました。',
+    'also_confirm_email_label' => 'メール確認済みにする（すぐにログイン可能にします）',
 ];
 
 

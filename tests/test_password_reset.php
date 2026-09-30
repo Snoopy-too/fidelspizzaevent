@@ -176,11 +176,14 @@ $inMemoryRepo = new class implements PasswordResetRepositoryInterface {
         return true;
     }
 
-    public function updateUserPassword(int $userId, string $newPasswordHash): bool {
+    public function updateUserPassword(int $userId, string $newPasswordHash, bool $confirmEmail = false): bool {
         if (!isset($this->users[$userId])) {
             return false;
         }
         $this->users[$userId]['password_hash'] = $newPasswordHash;
+        if ($confirmEmail) {
+            $this->users[$userId]['is_confirmed'] = true;
+        }
         unset($this->activeSessionsByUser[$userId]);
         return true;
     }
@@ -287,13 +290,21 @@ assertTrue($thirdReq['success'] === true && $thirdReq['rate_limited'] === false,
 $fourthReq = $requestUseCase->execute($testEmail, '127.0.0.2', 'en');
 assertTrue($fourthReq['success'] === true && $fourthReq['rate_limited'] === true && count($sentEmails) === 3, "4th request within 15-minute window is rate-limited and does not send another email");
 
-// Test 2G: Admin direct password reset
+// Test 2G: Admin direct password reset (including mismatch rejection & account confirmation)
+$inMemoryRepo->users[$testUserId]['is_confirmed'] = false;
+$adminMismatch = $resetUseCase->adminResetPassword($testUserId, 'AdminPass123!', 'Mismatch999!', true);
+assertTrue($adminMismatch['success'] === false && $adminMismatch['error_code'] === 'error_password_mismatch', "Admin password change rejects mismatched confirm_password");
+
 $adminNewPass = 'AdminSetPassword999!';
-$adminReset = $resetUseCase->adminResetPassword($testUserId, $adminNewPass);
+$adminReset = $resetUseCase->adminResetPassword($testUserId, $adminNewPass, $adminNewPass, true);
 assertTrue($adminReset['success'] === true, "Admin direct password reset succeeds");
 assertTrue(
     verifyPassword($adminNewPass, $inMemoryRepo->users[$testUserId]['password_hash']),
     "Admin-set password verifies against updated hash"
+);
+assertTrue(
+    $inMemoryRepo->users[$testUserId]['is_confirmed'] === true,
+    "Admin password change with confirmEmail=true marks customer account confirmed"
 );
 
 echo "\n===========================================\n";

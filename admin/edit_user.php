@@ -50,6 +50,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if (isset($_POST['admin_change_password'])) {
+        $newPassword = (string)($_POST['new_password'] ?? '');
+        $confirmPassword = isset($_POST['confirm_password']) ? (string)$_POST['confirm_password'] : null;
+        $confirmEmail = isset($_POST['confirm_email']);
+
+        $result = $container->getResetPasswordUseCase()->adminResetPassword(
+            $id,
+            $newPassword,
+            $confirmPassword,
+            $confirmEmail
+        );
+
+        if ($result['success']) {
+            $fullName = trim((string)$user['first_name'] . ' ' . (string)$user['last_name']);
+            setFlash('success', sprintf((string)__('admin_password_changed_success'), $fullName, (string)$user['email']));
+        } else {
+            $errCode = $result['error_code'] ?? 'user_update_error';
+            setFlash('error', (string)__($errCode));
+        }
+        header("Location: " . $redirectUrl);
+        exit;
+    }
+
     $first = trim((string)($_POST['first_name'] ?? ''));
     $last = trim((string)($_POST['last_name'] ?? ''));
     $email = trim((string)($_POST['email'] ?? ''));
@@ -102,8 +125,11 @@ require_once __DIR__ . '/includes/header.php';
                 <label for="new_password"><?= htmlspecialchars((string)__('new_password_optional'), ENT_QUOTES, 'UTF-8') ?></label>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <input type="password" id="new_password" name="new_password" minlength="6" autocomplete="new-password" placeholder="<?= htmlspecialchars((string)__('leave_blank_keep_password'), ENT_QUOTES, 'UTF-8') ?>">
-                    <button type="button" class="btn btn-secondary" style="padding: 10px 14px; font-size: 0.85em;" onclick="toggleCustomerPasswordVisibility('new_password', this)">
+                    <button type="button" class="btn btn-secondary" style="padding: 10px 14px; font-size: 0.85em; white-space: nowrap;" onclick="toggleCustomerPasswordVisibility('new_password', this)">
                         <?= htmlspecialchars((string)__('show_password'), ENT_QUOTES, 'UTF-8') ?>
+                    </button>
+                    <button type="button" class="btn btn-secondary" style="padding: 10px 14px; font-size: 0.85em; white-space: nowrap;" onclick="generateCustomerPassword('new_password', null, 'toggleNewPwdBtn')" id="genNewPwdBtn">
+                        <?= htmlspecialchars((string)__('generate_password_btn'), ENT_QUOTES, 'UTF-8') ?>
                     </button>
                 </div>
                 <p style="font-size: 0.85em; color: #64748b; margin-top: 4px;"><?= htmlspecialchars((string)__('leave_blank_keep_password'), ENT_QUOTES, 'UTF-8') ?></p>
@@ -134,6 +160,28 @@ require_once __DIR__ . '/includes/header.php';
             } else {
                 input.type = 'password';
                 btn.textContent = <?= json_encode((string)__('show_password')) ?>;
+            }
+        }
+
+        function generateCustomerPassword(inputId, confirmInputId) {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+            let generated = '';
+            const randomValues = new Uint32Array(10);
+            window.crypto.getRandomValues(randomValues);
+            for (let i = 0; i < 10; i++) {
+                generated += chars[randomValues[i] % chars.length];
+            }
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.value = generated;
+                input.type = 'text';
+            }
+            if (confirmInputId) {
+                const confirmInput = document.getElementById(confirmInputId);
+                if (confirmInput) {
+                    confirmInput.value = generated;
+                    confirmInput.type = 'text';
+                }
             }
         }
         </script>

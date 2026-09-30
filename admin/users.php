@@ -108,6 +108,7 @@ require_once __DIR__ . '/includes/header.php';
                                 ?>
                                 <button type="button" class="btn-action-link" onclick="openUserDetailsModal(<?= (int)$user['id'] ?>)" style="background:none;border:none;color:#3498db;cursor:pointer;font-weight:bold;padding:0;font-size:inherit;font-family:inherit;"><?= __('details') ?></button> | 
                                 <button type="button" class="btn-action-link" onclick="openEditUserModal(<?= $userJsonAttr ?>)" style="background:none;border:none;color:#f39c12;cursor:pointer;font-weight:bold;padding:0;font-size:inherit;font-family:inherit;"><?= __('edit') ?></button> | 
+                                <button type="button" class="btn-action-link" onclick="openPasswordUserModal(<?= $userJsonAttr ?>)" style="background:none;border:none;color:#16a085;cursor:pointer;font-weight:bold;padding:0;font-size:inherit;font-family:inherit;"><?= htmlspecialchars((string)__('change_password_action'), ENT_QUOTES, 'UTF-8') ?></button> | 
                                 <a href="promotions.php?user_ids[]=<?= (int)$user['id'] ?>" style="color: #9b59b6; text-decoration:none;" title="Send promotional email">📧</a> |
                                 <button type="button" class="btn-action-link" onclick="openDeleteUserModal(<?= (int)$user['id'] ?>, '<?= $userFullNameAttr ?>', '<?= $userEmailAttr ?>')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-weight:bold;padding:0;font-size:inherit;font-family:inherit;"><?= __('delete_user') ?></button>
                             </td>
@@ -235,6 +236,9 @@ require_once __DIR__ . '/includes/header.php';
                 <button type="button" class="modal-btn modal-btn-primary" id="detailEditBtn" onclick="transitionToEditFromDetails()">
                     ✏️ <?= __('edit') ?>
                 </button>
+                <button type="button" class="modal-btn modal-btn-success" id="detailPasswordBtn" onclick="transitionToPasswordFromDetails()">
+                    <?= htmlspecialchars((string)__('change_password_action'), ENT_QUOTES, 'UTF-8') ?>
+                </button>
                 <button type="button" class="modal-btn modal-btn-danger" id="detailDeleteBtn" onclick="transitionToDeleteFromDetails()">
                     🗑️ <?= __('delete_user') ?>
                 </button>
@@ -242,6 +246,83 @@ require_once __DIR__ . '/includes/header.php';
                     <?= __('close') ?>
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         CHANGE CUSTOMER PASSWORD MODAL
+         ========================================================================== -->
+    <div class="modal-backdrop" id="userPasswordModal">
+        <div class="modal-dialog modal-dialog-sm">
+            <form method="POST" action="edit_user.php" id="changePasswordForm" autocomplete="off">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)getCsrfToken(), ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="return_to" value="users.php">
+                <input type="hidden" name="admin_change_password" value="1">
+                <input type="hidden" name="id" id="pwdUserId" value="">
+
+                <div class="modal-header">
+                    <h3>🔑 <?= htmlspecialchars((string)__('change_customer_password_title'), ENT_QUOTES, 'UTF-8') ?></h3>
+                    <button type="button" class="modal-close" onclick="closeModal('userPasswordModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 14px; color: #166534;">
+                        <div style="font-weight: bold; font-size: 1rem;">👤 <span id="pwdUserName">-</span></div>
+                        <div style="font-size: 0.88rem; color: #15803d; margin-top: 2px;" id="pwdUserEmail">-</div>
+                    </div>
+
+                    <p style="font-size: 0.9rem; color: #475569; line-height: 1.5; margin: 0;">
+                        <?= htmlspecialchars((string)__('change_customer_password_desc'), ENT_QUOTES, 'UTF-8') ?>
+                    </p>
+
+                    <div class="form-group">
+                        <label for="pwdNewPassword"><?= htmlspecialchars((string)__('new_password_label'), ENT_QUOTES, 'UTF-8') ?> *</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="password"
+                                   id="pwdNewPassword"
+                                   name="new_password"
+                                   minlength="6"
+                                   autocomplete="new-password"
+                                   placeholder="<?= htmlspecialchars((string)__('password_min_length_hint'), ENT_QUOTES, 'UTF-8') ?>"
+                                   required>
+                            <button type="button"
+                                    id="pwdToggleBtn"
+                                    class="modal-btn modal-btn-cancel"
+                                    style="padding: 8px 12px; font-size: 0.85em; white-space: nowrap;"
+                                    onclick="toggleModalPasswordVisibility('pwdNewPassword', this, 'pwdConfirmPassword')">
+                                <?= htmlspecialchars((string)__('show_password'), ENT_QUOTES, 'UTF-8') ?>
+                            </button>
+                            <button type="button"
+                                    class="modal-btn modal-btn-cancel"
+                                    style="padding: 8px 12px; font-size: 0.85em; white-space: nowrap;"
+                                    onclick="generateModalCustomerPassword()">
+                                <?= htmlspecialchars((string)__('generate_password_btn'), ENT_QUOTES, 'UTF-8') ?>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pwdConfirmPassword"><?= htmlspecialchars((string)__('confirm_new_password_label'), ENT_QUOTES, 'UTF-8') ?> *</label>
+                        <input type="password"
+                               id="pwdConfirmPassword"
+                               name="confirm_password"
+                               minlength="6"
+                               autocomplete="new-password"
+                               placeholder="<?= htmlspecialchars((string)__('password_min_length_hint'), ENT_QUOTES, 'UTF-8') ?>"
+                               required>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                        <label style="margin: 0; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                            <input type="checkbox" id="pwdConfirmEmail" name="confirm_email" value="1" checked style="width: 17px; height: 17px; cursor: pointer;">
+                            <?= htmlspecialchars((string)__('also_confirm_email_label'), ENT_QUOTES, 'UTF-8') ?>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('userPasswordModal')"><?= __('cancel') ?></button>
+                    <button type="submit" class="modal-btn modal-btn-primary"><?= htmlspecialchars((string)__('update_password_btn'), ENT_QUOTES, 'UTF-8') ?></button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -550,15 +631,78 @@ require_once __DIR__ . '/includes/header.php';
         openModal('userEditModal');
     }
 
-    function toggleModalPasswordVisibility(inputId, btn) {
+    function toggleModalPasswordVisibility(inputId, btn, secondInputId) {
         const input = document.getElementById(inputId);
+        const second = secondInputId ? document.getElementById(secondInputId) : null;
         if (!input) return;
         if (input.type === 'password') {
             input.type = 'text';
+            if (second) second.type = 'text';
             btn.textContent = <?= json_encode((string)__('hide_password')) ?>;
         } else {
             input.type = 'password';
+            if (second) second.type = 'password';
             btn.textContent = <?= json_encode((string)__('show_password')) ?>;
+        }
+    }
+
+    // Open Change Customer Password Modal
+    function openPasswordUserModal(user) {
+        if (!user) return;
+        document.getElementById('pwdUserId').value = user.id || '';
+        const fullName = user.full_name || ((user.first_name || '') + ' ' + (user.last_name || '')).trim();
+        document.getElementById('pwdUserName').textContent = fullName || '-';
+        document.getElementById('pwdUserEmail').textContent = user.email || '-';
+
+        const pwdInput = document.getElementById('pwdNewPassword');
+        const confirmInput = document.getElementById('pwdConfirmPassword');
+        const toggleBtn = document.getElementById('pwdToggleBtn');
+        if (pwdInput) {
+            pwdInput.value = '';
+            pwdInput.type = 'password';
+        }
+        if (confirmInput) {
+            confirmInput.value = '';
+            confirmInput.type = 'password';
+            confirmInput.setCustomValidity('');
+        }
+        if (toggleBtn) {
+            toggleBtn.textContent = <?= json_encode((string)__('show_password')) ?>;
+        }
+        document.getElementById('pwdConfirmEmail').checked = true;
+        openModal('userPasswordModal');
+    }
+
+    function generateModalCustomerPassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+        let generated = '';
+        const randomValues = new Uint32Array(10);
+        window.crypto.getRandomValues(randomValues);
+        for (let i = 0; i < 10; i++) {
+            generated += chars[randomValues[i] % chars.length];
+        }
+        const pwdInput = document.getElementById('pwdNewPassword');
+        const confirmInput = document.getElementById('pwdConfirmPassword');
+        const toggleBtn = document.getElementById('pwdToggleBtn');
+        if (pwdInput) {
+            pwdInput.value = generated;
+            pwdInput.type = 'text';
+        }
+        if (confirmInput) {
+            confirmInput.value = generated;
+            confirmInput.type = 'text';
+            confirmInput.setCustomValidity('');
+        }
+        if (toggleBtn) {
+            toggleBtn.textContent = <?= json_encode((string)__('hide_password')) ?>;
+        }
+    }
+
+    // Transition from details to password modal
+    function transitionToPasswordFromDetails() {
+        if (activeUserDetails) {
+            closeModal('userDetailsModal');
+            openPasswordUserModal(activeUserDetails);
         }
     }
 

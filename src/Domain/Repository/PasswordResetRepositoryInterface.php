@@ -52,7 +52,7 @@ interface PasswordResetRepositoryInterface
      * Directly update a user's password hash (e.g. by an administrator), invalidate reset tokens,
      * and revoke active user sessions.
      */
-    public function updateUserPassword(int $userId, string $newPasswordHash): bool;
+    public function updateUserPassword(int $userId, string $newPasswordHash, bool $confirmEmail = false): bool;
 
     /**
      * Fetch the password_reset email template subject and body if configured in email_templates.

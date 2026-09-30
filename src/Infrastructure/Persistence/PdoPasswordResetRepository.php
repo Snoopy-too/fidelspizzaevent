@@ -283,7 +283,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         }
     }
 
-    public function updateUserPassword(int $userId, string $newPasswordHash): bool
+    public function updateUserPassword(int $userId, string $newPasswordHash, bool $confirmEmail = false): bool
     {
         $startedTransaction = false;
         if (!$this->pdo->inTransaction()) {
@@ -294,11 +294,19 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         try {
             $nowStr = (new DateTimeImmutable())->format('Y-m-d H:i:s');
 
-            $updateUser = $this->pdo->prepare("
-                UPDATE `users`
-                SET `password_hash` = ?
-                WHERE `id` = ?
-            ");
+            if ($confirmEmail) {
+                $updateUser = $this->pdo->prepare("
+                    UPDATE `users`
+                    SET `password_hash` = ?, `is_confirmed` = 1, `confirmation_token` = NULL
+                    WHERE `id` = ?
+                ");
+            } else {
+                $updateUser = $this->pdo->prepare("
+                    UPDATE `users`
+                    SET `password_hash` = ?
+                    WHERE `id` = ?
+                ");
+            }
             $updateUser->execute([$newPasswordHash, $userId]);
 
             $invalidateTokens = $this->pdo->prepare("
