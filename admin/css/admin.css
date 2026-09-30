@@ -352,6 +352,37 @@ body {
     background: #c0392b;
 }
 
+.btn-export-pdf {
+    background: #e67e22;
+    color: white !important;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.btn-export-pdf:hover {
+    background: #d35400;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(230, 126, 34, 0.35);
+}
+
+.btn-export-pdf:disabled {
+    background: #bdc3c7 !important;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+    opacity: 0.7;
+}
+
 .controls {
     display: flex;
     gap: 15px;
@@ -811,5 +842,49 @@ textarea {
 @keyframes modal-spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Print Styles */
+@media print {
+    .header, .nav-links, .lang-selector, .admin-menu, .stats-grid,
+    .controls, .bulk-actions, .btn, .btn-export-pdf, .action-links,
+    .messages, .alert, form.controls, [onclick*="toggleAll"], input[type="checkbox"] {
+        display: none !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+        font-size: 11pt;
+    }
+
+    .container, .section, .orders-table {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    .table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    .table th, .table td {
+        border: 1px solid #999 !important;
+        padding: 6px 8px !important;
+    }
+
+    .table th {
+        background: #eee !important;
+        color: black !important;
+    }
+
+    .status-badge {
+        border: 1px solid #999 !important;
+        background: none !important;
+        color: black !important;
+    }
 }
 

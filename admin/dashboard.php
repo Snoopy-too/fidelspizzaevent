@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once '../config.php';
 require_once __DIR__ . '/../helpers.php';
 requireAdmin();
@@ -141,8 +143,24 @@ require_once __DIR__ . '/includes/header.php';
         <!-- Current Orders -->
         <?php if (!empty($current_orders)): ?>
         <div class="section">
-            <h2><?= __('current_orders') ?></h2>
-            <table class="table">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #3498db; padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;"><?= __('current_orders') ?></h2>
+                <button type="button" 
+                        class="btn btn-export-pdf" 
+                        id="exportDashboardPdfBtn"
+                        data-table-id="current-orders-table"
+                        data-report-title="<?= htmlspecialchars((string)__('current_orders')) ?>"
+                        data-site-title="<?= htmlspecialchars((string)($config['site_title'] ?? "Fidel's Pizza Event")) ?>"
+                        data-lang="<?= htmlspecialchars((string)($currentLang ?? 'ja')) ?>"
+                        data-label-generating="<?= htmlspecialchars((string)__('generating_pdf')) ?>"
+                        data-label-generated-at="<?= htmlspecialchars((string)__('pdf_generated_at')) ?>"
+                        data-label-total-records="<?= htmlspecialchars((string)__('pdf_total_records')) ?>"
+                        data-orientation="portrait"
+                        data-filename="current_orders_<?= date('Y-m-d') ?>.pdf">
+                    📄 <?= htmlspecialchars((string)__('export_pdf')) ?>
+                </button>
+            </div>
+            <table class="table" id="current-orders-table">
                 <thead>
                     <tr>
                         <th><?= __('order_number_label') ?></th>
@@ -184,5 +202,8 @@ require_once __DIR__ . '/includes/header.php';
                 <a href="reports.php" style="background: #8e44ad; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">📊 <?= __('generate_reports') ?></a>
             </div>
         </div>
+
+        <script src="js/html2pdf.bundle.min.js"></script>
+        <script src="js/order-pdf-export.js"></script>
 <?php
 require_once __DIR__ . '/includes/footer.php';

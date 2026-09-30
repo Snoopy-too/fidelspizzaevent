@@ -167,6 +167,19 @@ $status_counts = ['pending' => 0];
 while ($row = $stmt->fetch()) {
     $status_counts[(string)$row['status']] = (int)$row['count'];
 }
+$activeFilterParts = [];
+if ($filter_status !== '') {
+    $activeFilterParts[] = __('status') . ': ' . __('status_' . $filter_status);
+} else {
+    $activeFilterParts[] = __('status') . ': ' . __('all_statuses');
+}
+if ($search !== '') {
+    $activeFilterParts[] = __('search') . ': "' . $search . '"';
+}
+if (isset($valid_sorts[$sort_by])) {
+    $activeFilterParts[] = __('sort_by') . ': ' . __('sort_' . $sort_by) . ' (' . ($sort_order === 'ASC' ? __('sort_asc') : __('sort_desc')) . ')';
+}
+$activeFilterSummary = implode(' | ', $activeFilterParts);
 
 $page_title = __('order_management');
 require_once __DIR__ . '/includes/header.php';
@@ -248,19 +261,41 @@ require_once __DIR__ . '/includes/header.php';
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
             <div class="orders-table">
-                <div class="bulk-actions">
-                    <select name="bulk_action" class="status-select">
-                        <option value=""><?= htmlspecialchars((string)__('bulk_action')) ?></option>
-                        <option value="confirmed"><?= htmlspecialchars((string)__('mark_confirmed')) ?></option>
-                        <option value="preparing"><?= htmlspecialchars((string)__('mark_preparing')) ?></option>
-                        <option value="ready"><?= htmlspecialchars((string)__('mark_ready')) ?></option>
-                        <option value="completed"><?= htmlspecialchars((string)__('mark_completed')) ?></option>
-                        <option value="cancelled"><?= htmlspecialchars((string)__('mark_cancelled')) ?></option>
-                    </select>
-                    <button type="submit" class="btn"><?= htmlspecialchars((string)__('apply')) ?></button>
+                <div class="bulk-actions" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <select name="bulk_action" class="status-select">
+                            <option value=""><?= htmlspecialchars((string)__('bulk_action')) ?></option>
+                            <option value="confirmed"><?= htmlspecialchars((string)__('mark_confirmed')) ?></option>
+                            <option value="preparing"><?= htmlspecialchars((string)__('mark_preparing')) ?></option>
+                            <option value="ready"><?= htmlspecialchars((string)__('mark_ready')) ?></option>
+                            <option value="completed"><?= htmlspecialchars((string)__('mark_completed')) ?></option>
+                            <option value="cancelled"><?= htmlspecialchars((string)__('mark_cancelled')) ?></option>
+                        </select>
+                        <button type="submit" class="btn"><?= htmlspecialchars((string)__('apply')) ?></button>
+                    </div>
+                    <?php if (!empty($orders)): ?>
+                    <div>
+                        <button type="button" 
+                                class="btn btn-export-pdf" 
+                                id="exportOrdersPdfBtn"
+                                data-table-id="orders-table"
+                                data-report-title="<?= htmlspecialchars((string)__('order_management')) ?>"
+                                data-site-title="<?= htmlspecialchars((string)($config['site_title'] ?? "Fidel's Pizza Event")) ?>"
+                                data-lang="<?= htmlspecialchars((string)($currentLang ?? 'ja')) ?>"
+                                data-label-generating="<?= htmlspecialchars((string)__('generating_pdf')) ?>"
+                                data-label-generated-at="<?= htmlspecialchars((string)__('pdf_generated_at')) ?>"
+                                data-label-total-records="<?= htmlspecialchars((string)__('pdf_total_records')) ?>"
+                                data-label-filters="<?= htmlspecialchars((string)__('pdf_active_filters')) ?>"
+                                data-filter-info="<?= htmlspecialchars((string)$activeFilterSummary) ?>"
+                                data-orientation="landscape"
+                                data-filename="orders_<?= date('Y-m-d') ?>.pdf">
+                            📄 <?= htmlspecialchars((string)__('export_pdf')) ?>
+                        </button>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
-                <table class="table">
+                <table class="table" id="orders-table">
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
@@ -321,5 +356,7 @@ require_once __DIR__ . '/includes/header.php';
         checkboxes.forEach(checkbox => checkbox.checked = source.checked);
     }
     </script>
+    <script src="js/html2pdf.bundle.min.js"></script>
+    <script src="js/order-pdf-export.js"></script>
 <?php
 require_once __DIR__ . '/includes/footer.php';
