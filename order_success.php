@@ -77,6 +77,12 @@ h1 { color:#2e7d32; font-size:2.5em; margin-bottom:30px; }
     <div class="order-details">
         <div class="order-number"><?= sprintf(__('order_number'), safeHtml($order_data['order_number'] ?? '')) ?></div>
         <div class="amount"><?= safeHtml(formatPrice($order_data['total_amount'] ?? 0)) ?></div>
+        <?php if (!empty($order_data['pickup_display']) || !empty($order_data['pickup_time'])): ?>
+            <div style="margin-top: 10px; font-size: 1.15em; color: #2e7d32; font-weight: bold;">
+                ⏰ <?= safeHtml(__('pickup_time_label')) ?>
+                <?= safeHtml(!empty($order_data['pickup_display']) ? $order_data['pickup_display'] : date('H:i', strtotime((string)$order_data['pickup_time']))) ?>
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="message">

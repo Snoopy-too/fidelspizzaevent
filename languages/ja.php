@@ -375,5 +375,32 @@ return [
     'template_deleted_success' => 'テンプレートを削除しました。',
     'use_as_template' => '📋 作成画面にコピー',
     'template_copied_notice' => 'キャンペーン内容を作成画面にコピーしました！',
+
+    // 受取時間枠（ピックアップタイム）管理・選択
+    'pickup_time_slots_title' => '受取時間枠（ピックアップ時間）の設定',
+    'pickup_time_slots_desc' => 'お客様が注文時に選択できる受取時間枠（例：ピックアップA、B、Cなど）を設定します。最大ピザ枚数や最大注文数を空欄にすると無制限になります。',
+    'slot_label_column' => 'ラベル（任意）',
+    'slot_label_placeholder' => '例：受取時間 A',
+    'slot_time_column' => '受取時間',
+    'slot_max_pizzas_column' => '最大ピザ枚数',
+    'slot_max_orders_column' => '最大注文数',
+    'slot_unlimited_placeholder' => '無制限',
+    'slot_active_column' => '有効',
+    'slot_current_bookings_column' => '現在の予約状況',
+    'add_pickup_time_slot' => '＋ 受取時間枠を追加',
+    'remove_slot' => '削除',
+    'slot_bookings_badge' => '%d件 / %d枚',
+    'no_pickup_slots_configured' => '受取時間枠が設定されていません。「＋ 受取時間枠を追加」をクリックして追加してください。',
+    'select_pickup_time_title' => '⏰ 受取時間を選択してください',
+    'select_pickup_time_desc' => 'ご希望のピザ受取時間枠を1つ選択してください。',
+    'pickup_time_required' => '受取時間を選択してください。',
+    'slot_full_badge' => '受付終了（満枠）',
+    'slot_remaining_pizzas' => '残り %d 枚',
+    'slot_remaining_orders' => '残り %d 枠',
+    'slot_exceeds_remaining_pizzas' => '選択したピザ枚数（%d枚）がこの時間枠の残り枚数（%d枚）を超えています',
+    'pickup_time_label' => '受取時間：',
+    'change_pickup_time' => '受取時間の変更',
+    'quick_select_slot' => '設定済み枠から選択：',
 ];
+
 

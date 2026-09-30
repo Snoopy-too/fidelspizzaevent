@@ -126,4 +126,25 @@ final class ServiceContainer
         }
         return $this->managePromotionalTemplatesUseCase;
     }
+
+    private ?\FidelsPizza\Domain\Repository\PickupTimeSlotRepositoryInterface $pickupTimeSlotRepository = null;
+    private ?\FidelsPizza\Application\UseCase\ManagePickupTimeSlotsUseCase $managePickupTimeSlotsUseCase = null;
+
+    public function getPickupTimeSlotRepository(): \FidelsPizza\Domain\Repository\PickupTimeSlotRepositoryInterface
+    {
+        if ($this->pickupTimeSlotRepository === null) {
+            $this->pickupTimeSlotRepository = new \FidelsPizza\Infrastructure\Persistence\PdoPickupTimeSlotRepository($this->pdo);
+        }
+        return $this->pickupTimeSlotRepository;
+    }
+
+    public function getManagePickupTimeSlotsUseCase(): \FidelsPizza\Application\UseCase\ManagePickupTimeSlotsUseCase
+    {
+        if ($this->managePickupTimeSlotsUseCase === null) {
+            $this->managePickupTimeSlotsUseCase = new \FidelsPizza\Application\UseCase\ManagePickupTimeSlotsUseCase(
+                $this->getPickupTimeSlotRepository()
+            );
+        }
+        return $this->managePickupTimeSlotsUseCase;
+    }
 }

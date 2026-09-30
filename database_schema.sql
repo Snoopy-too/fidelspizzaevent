@@ -110,6 +110,7 @@ CREATE TABLE `orders` (
   `status` enum('pending','confirmed','preparing','ready','completed','cancelled','archived') NOT NULL DEFAULT 'pending',
   `notes` text,
   `pickup_time` datetime DEFAULT NULL,
+  `pickup_slot_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -462,6 +463,33 @@ CREATE TABLE `promotional_templates` (
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_promotional_templates_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `pickup_time_slots`
+--
+
+CREATE TABLE `pickup_time_slots` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `config_id` int(11) NOT NULL DEFAULT '1',
+  `label` varchar(100) NOT NULL DEFAULT '',
+  `slot_time` time NOT NULL,
+  `max_pizzas` int(11) DEFAULT NULL,
+  `max_orders` int(11) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int(11) NOT NULL DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pts_config` (`config_id`),
+  KEY `idx_pts_active_sort` (`is_active`, `sort_order`, `slot_time`),
+  CONSTRAINT `fk_pickup_time_slots_config` FOREIGN KEY (`config_id`) REFERENCES `site_config` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `orders`
+  ADD KEY `idx_orders_pickup_slot` (`pickup_slot_id`),
+  ADD CONSTRAINT `fk_orders_pickup_slot` FOREIGN KEY (`pickup_slot_id`) REFERENCES `pickup_time_slots` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 COMMIT;
 

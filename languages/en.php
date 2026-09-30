@@ -375,5 +375,32 @@ return [
     'template_deleted_success' => 'Template deleted.',
     'use_as_template' => '📋 Copy to Composer',
     'template_copied_notice' => 'Campaign content copied to composer!',
+
+    // Pickup Time Slots Management & Customer Selection
+    'pickup_time_slots_title' => 'Pickup Time Slots',
+    'pickup_time_slots_desc' => 'Configure the pickup time options (e.g., Pickup Time A, B, C) that customers can choose when placing or editing an order. Leave Max Pizzas or Max Orders blank for unlimited capacity.',
+    'slot_label_column' => 'Slot Label (Optional)',
+    'slot_label_placeholder' => 'e.g., Pickup Time A',
+    'slot_time_column' => 'Time (24h)',
+    'slot_max_pizzas_column' => 'Max Pizzas',
+    'slot_max_orders_column' => 'Max Orders',
+    'slot_unlimited_placeholder' => 'Unlimited',
+    'slot_active_column' => 'Active',
+    'slot_current_bookings_column' => 'Current Bookings',
+    'add_pickup_time_slot' => '+ Add Pickup Time',
+    'remove_slot' => 'Remove',
+    'slot_bookings_badge' => '%d orders / %d pizzas',
+    'no_pickup_slots_configured' => 'No pickup time slots configured yet. Click "+ Add Pickup Time" to add one.',
+    'select_pickup_time_title' => '⏰ Select Pickup Time',
+    'select_pickup_time_desc' => 'Please choose one of the available pickup times below for your order.',
+    'pickup_time_required' => 'Please select a pickup time.',
+    'slot_full_badge' => 'Full',
+    'slot_remaining_pizzas' => '%d pizzas left',
+    'slot_remaining_orders' => '%d orders left',
+    'slot_exceeds_remaining_pizzas' => 'Your cart (%d pizzas) exceeds the remaining capacity (%d pizzas) for this slot',
+    'pickup_time_label' => 'Pickup Time:',
+    'change_pickup_time' => 'Pickup Time',
+    'quick_select_slot' => 'Quick-select slot:',
 ];
+
 

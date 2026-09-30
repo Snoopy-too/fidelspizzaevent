@@ -108,6 +108,11 @@ h1 { color:#d32f2f; font-size:2.5em; margin-bottom:20px; }
             <div>
                 <div class="order-number"><?= sprintf(__('order_number'), htmlspecialchars($order['order_number'])) ?></div>
                 <div class="order-date"><?= date('Y年n月j日 H:i', strtotime($order['created_at'])) ?></div>
+                <?php if (!empty($order['pickup_time'])): ?>
+                    <div style="margin-top: 4px; color: #e65100; font-weight: bold; font-size: 0.95em;">
+                        ⏰ <?= htmlspecialchars((string)__('pickup_time_label')) ?> <?= date('Y/m/d H:i', strtotime((string)$order['pickup_time'])) ?>
+                    </div>
+                <?php endif; ?>
             </div>
             <div class="order-status status-<?= htmlspecialchars($order['status']) ?>">
                 <?= translateStatus($order['status']) ?>
@@ -136,6 +141,9 @@ h1 { color:#d32f2f; font-size:2.5em; margin-bottom:20px; }
         <div class="pickup-info">
             <h4>📍 <?= __('pickup_info') ?></h4>
             <p><strong><?= __('pickup_date') ?></strong> <?= date('Y年n月j日', strtotime($config['event_date'])) ?></p>
+            <?php if(!empty($order['pickup_time'])): ?>
+            <p><strong><?= htmlspecialchars((string)__('pickup_time_label')) ?></strong> <?= date('H:i', strtotime((string)$order['pickup_time'])) ?></p>
+            <?php endif; ?>
             <?php if(!empty($config['event_location'])): ?>
             <p><strong><?= __('pickup_location') ?></strong> <?= htmlspecialchars($config['event_location']) ?></p>
             <?php endif; ?>
