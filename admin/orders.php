@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once '../config.php';
 require_once __DIR__ . '/../helpers.php';
 
@@ -9,11 +11,11 @@ $db = getDB();
 
 // Handle POST actions (status update / bulk actions)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+    if (!verifyCsrfToken((string)($_POST['csrf_token'] ?? ''))) {
         $error_message = __('invalid_csrf_token') ?: 'Invalid CSRF token.';
     } elseif (isset($_POST['update_status'])) {
         $order_id = (int)($_POST['order_id'] ?? 0);
-        $new_status = $_POST['status'] ?? '';
+        $new_status = (string)($_POST['status'] ?? '');
         
         if ($order_id && in_array($new_status, ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'], true)) {
             try {
@@ -25,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif (isset($_POST['bulk_action'])) {
-        $action = $_POST['bulk_action'];
-        $selected_orders = $_POST['selected_orders'] ?? [];
+        $action = (string)$_POST['bulk_action'];
+        $selected_orders = isset($_POST['selected_orders']) && is_array($_POST['selected_orders']) ? $_POST['selected_orders'] : [];
         
         if (!empty($selected_orders) && in_array($action, ['confirmed', 'preparing', 'ready', 'completed', 'cancelled'], true)) {
             try {
@@ -41,22 +43,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Filtering and sorting
-$filter_status = $_GET['status'] ?? '';
-$sort_by = $_GET['sort'] ?? 'created_at';
-$sort_order = strtoupper($_GET['order'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
-$search = $_GET['search'] ?? '';
+// Filtering and sorting (default to 'pending' when visiting without a status parameter)
+$filter_status = isset($_GET['status']) ? (string)$_GET['status'] : 'pending';
+$sort_by = (string)($_GET['sort'] ?? 'created_at');
+$sort_order = strtoupper((string)($_GET['order'] ?? 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+$search = (string)($_GET['search'] ?? '');
 
 // Build query
 $where_conditions = [];
 $params = [];
 
-if ($filter_status) {
+if ($filter_status !== '') {
     $where_conditions[] = "o.status = ?";
     $params[] = $filter_status;
 }
 
-if ($search) {
+if ($search !== '') {
     $where_conditions[] = "(o.order_number LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)";
     $search_term = "%$search%";
     $params = array_merge($params, [$search_term, $search_term, $search_term, $search_term]);
@@ -95,7 +97,7 @@ $pickup_data = $stmt->fetchAll();
 $pickup_orders = [];
 $pizza_types = [];
 foreach ($pickup_data as $row) {
-    if($row['pickup_time']) {
+    if ($row['pickup_time']) {
         $pickup_orders[$row['pickup_time']][$row['pizza_name']] = $row['total_quantity'];
         $pizza_types[$row['pizza_name']] = true;
     }
@@ -117,11 +119,11 @@ $stmt = $db->prepare("
 $stmt->execute($params);
 $orders = $stmt->fetchAll();
 
-// Get status counts for filters
+// Get status counts for filters (ensure 'pending' is always present so the default filter option is selectable)
 $stmt = $db->query("SELECT status, COUNT(*) as count FROM orders GROUP BY status");
-$status_counts = [];
+$status_counts = ['pending' => 0];
 while ($row = $stmt->fetch()) {
-    $status_counts[$row['status']] = $row['count'];
+    $status_counts[(string)$row['status']] = (int)$row['count'];
 }
 
 $page_title = __('order_management');
@@ -129,21 +131,21 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
         <?php if (!empty($success_message)): ?>
-            <div class="messages"><div class="message success"><?= $success_message ?></div></div>
+            <div class="messages"><div class="message success"><?= htmlspecialchars((string)$success_message) ?></div></div>
         <?php endif; ?>
         <?php if (!empty($error_message)): ?>
-            <div class="messages"><div class="message error"><?= $error_message ?></div></div>
+            <div class="messages"><div class="message error"><?= htmlspecialchars((string)$error_message) ?></div></div>
         <?php endif; ?>
 
         <!-- PICK-UP TIME ORDERS SUMMARY TABLE -->
         <div class="orders-table">
-            <h2 style="padding: 15px; background: #34495e; color: white; border-radius: 10px 10px 0 0;">📦 <?= __('pickup_schedule_summary') ?></h2>
+            <h2 style="padding: 15px; background: #34495e; color: white; border-radius: 10px 10px 0 0;">📦 <?= htmlspecialchars((string)__('pickup_schedule_summary')) ?></h2>
             <table class="table">
                 <thead>
                     <tr>
-                        <th><?= __('pickup_time') ?></th>
+                        <th><?= htmlspecialchars((string)__('pickup_time')) ?></th>
                         <?php foreach ($pizza_types as $pizza): ?>
-                            <th><?= htmlspecialchars($pizza) ?></th>
+                            <th><?= htmlspecialchars((string)$pizza) ?></th>
                         <?php endforeach; ?>
                     </tr>
                 </thead>
@@ -151,15 +153,15 @@ require_once __DIR__ . '/includes/header.php';
                     <?php if (empty($pickup_orders)): ?>
                         <tr>
                             <td colspan="<?= count($pizza_types) + 1 ?>" style="text-align:center; padding: 20px; color: #999;">
-                                <?= __('no_scheduled_pickups') ?>
+                                <?= htmlspecialchars((string)__('no_scheduled_pickups')) ?>
                             </td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($pickup_orders as $pickup_time => $pizzas): ?>
                             <tr>
-                                <td><strong><?= date('Y/m/d H:i', strtotime($pickup_time)) ?></strong></td>
+                                <td><strong><?= date('Y/m/d H:i', (int)strtotime((string)$pickup_time)) ?></strong></td>
                                 <?php foreach ($pizza_types as $pizza): ?>
-                                    <td><?= isset($pizzas[$pizza]) ? $pizzas[$pizza] : 0 ?></td>
+                                    <td><?= isset($pizzas[$pizza]) ? (int)$pizzas[$pizza] : 0 ?></td>
                                 <?php endforeach; ?>
                             </tr>
                         <?php endforeach; ?>
@@ -169,99 +171,99 @@ require_once __DIR__ . '/includes/header.php';
         </div>
 
         <!-- FILTERS & SEARCH -->
-        <div class="controls">
-            <form method="get" class="form-group">
-                <label><?= __('status') ?></label>
+        <form method="get" class="controls">
+            <div class="form-group">
+                <label><?= htmlspecialchars((string)__('status')) ?></label>
                 <select name="status" onchange="this.form.submit()">
-                    <option value=""><?= __('all_statuses') ?></option>
+                    <option value="" <?= $filter_status === '' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('all_statuses')) ?></option>
                     <?php foreach ($status_counts as $status => $count): ?>
-                        <option value="<?= $status ?>" <?= $filter_status === $status ? 'selected' : '' ?>><?= __('status_' . $status) ?> (<?= $count ?>)</option>
+                        <option value="<?= htmlspecialchars((string)$status) ?>" <?= $filter_status === (string)$status ? 'selected' : '' ?>><?= htmlspecialchars((string)__('status_' . $status)) ?> (<?= (int)$count ?>)</option>
                     <?php endforeach; ?>
                 </select>
-            </form>
-            <form method="get" class="form-group">
-                <label><?= __('search') ?></label>
-                <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="<?= __('search_placeholder') ?>">
-            </form>
-            <form method="get" class="form-group">
-                <label><?= __('sort_by') ?></label>
+            </div>
+            <div class="form-group">
+                <label><?= htmlspecialchars((string)__('search')) ?></label>
+                <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="<?= htmlspecialchars((string)__('search_placeholder')) ?>">
+            </div>
+            <div class="form-group">
+                <label><?= htmlspecialchars((string)__('sort_by')) ?></label>
                 <select name="sort" onchange="this.form.submit()">
                     <?php foreach ($valid_sorts as $key => $col): ?>
-                        <option value="<?= $key ?>" <?= $sort_by === $key ? 'selected' : '' ?>><?= __('sort_' . $key) ?></option>
+                        <option value="<?= htmlspecialchars($key) ?>" <?= $sort_by === $key ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_' . $key)) ?></option>
                     <?php endforeach; ?>
                 </select>
-            </form>
-            <form method="get" class="form-group">
-                <label><?= __('order_direction') ?></label>
+            </div>
+            <div class="form-group">
+                <label><?= htmlspecialchars((string)__('order_direction')) ?></label>
                 <select name="order" onchange="this.form.submit()">
-                    <option value="ASC" <?= $sort_order === 'ASC' ? 'selected' : '' ?>><?= __('sort_asc') ?></option>
-                    <option value="DESC" <?= $sort_order === 'DESC' ? 'selected' : '' ?>><?= __('sort_desc') ?></option>
+                    <option value="ASC" <?= $sort_order === 'ASC' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_asc')) ?></option>
+                    <option value="DESC" <?= $sort_order === 'DESC' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_desc')) ?></option>
                 </select>
-            </form>
-        </div>
+            </div>
+        </form>
 
         <!-- BULK ACTIONS & ORDERS TABLE -->
         <form method="post">
-            <input type="hidden" name="csrf_token" value="<?= getCsrfToken() ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
             <div class="orders-table">
                 <div class="bulk-actions">
                     <select name="bulk_action" class="status-select">
-                        <option value=""><?= __('bulk_action') ?></option>
-                        <option value="confirmed"><?= __('mark_confirmed') ?></option>
-                        <option value="preparing"><?= __('mark_preparing') ?></option>
-                        <option value="ready"><?= __('mark_ready') ?></option>
-                        <option value="completed"><?= __('mark_completed') ?></option>
-                        <option value="cancelled"><?= __('mark_cancelled') ?></option>
+                        <option value=""><?= htmlspecialchars((string)__('bulk_action')) ?></option>
+                        <option value="confirmed"><?= htmlspecialchars((string)__('mark_confirmed')) ?></option>
+                        <option value="preparing"><?= htmlspecialchars((string)__('mark_preparing')) ?></option>
+                        <option value="ready"><?= htmlspecialchars((string)__('mark_ready')) ?></option>
+                        <option value="completed"><?= htmlspecialchars((string)__('mark_completed')) ?></option>
+                        <option value="cancelled"><?= htmlspecialchars((string)__('mark_cancelled')) ?></option>
                     </select>
-                    <button type="submit" class="btn"><?= __('apply') ?></button>
+                    <button type="submit" class="btn"><?= htmlspecialchars((string)__('apply')) ?></button>
                 </div>
 
                 <table class="table">
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
-                            <th><?= __('order_number') ?></th>
-                            <th><?= __('customer') ?></th>
-                            <th><?= __('notes') ?></th>
-                            <th><?= __('items') ?></th>
-                            <th><?= __('total_amount') ?></th>
-                            <th><?= __('pickup_time') ?></th>
-                            <th><?= __('status') ?></th>
-                            <th><?= __('actions') ?></th>
+                            <th><?= htmlspecialchars((string)__('order_number')) ?></th>
+                            <th><?= htmlspecialchars((string)__('customer')) ?></th>
+                            <th><?= htmlspecialchars((string)__('notes')) ?></th>
+                            <th><?= htmlspecialchars((string)__('items')) ?></th>
+                            <th><?= htmlspecialchars((string)__('total_amount')) ?></th>
+                            <th><?= htmlspecialchars((string)__('pickup_time')) ?></th>
+                            <th><?= htmlspecialchars((string)__('status')) ?></th>
+                            <th><?= htmlspecialchars((string)__('actions')) ?></th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($orders)): ?>
                             <tr>
-                                <td colspan="9" style="text-align:center; padding: 20px; color: #999;"><?= __('no_orders_found') ?></td>
+                                <td colspan="9" style="text-align:center; padding: 20px; color: #999;"><?= htmlspecialchars((string)__('no_orders_found')) ?></td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($orders as $order): ?>
                                 <tr>
-                                    <td><input type="checkbox" name="selected_orders[]" value="<?= $order['id'] ?>"></td>
-                                    <td><strong><?= htmlspecialchars($order['order_number']) ?></strong></td>
+                                    <td><input type="checkbox" name="selected_orders[]" value="<?= (int)$order['id'] ?>"></td>
+                                    <td><strong><?= htmlspecialchars((string)$order['order_number']) ?></strong></td>
                                     <td>
-                                        <?= htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) ?><br>
-                                        <small><?= htmlspecialchars($order['email']) ?></small>
+                                        <?= htmlspecialchars((string)$order['first_name'] . ' ' . (string)$order['last_name']) ?><br>
+                                        <small><?= htmlspecialchars((string)$order['email']) ?></small>
                                     </td>
-                                    <td><small><?= htmlspecialchars($order['notes'] ?? '') ?: '<em style="color: #999;">' . __('no_notes') . '</em>' ?></small></td>
-                                    <td><?= htmlspecialchars($order['items']) ?></td>
-                                    <td>¥<?= number_format($order['total_amount'], 0) ?></td>
-                                    <td><?= $order['pickup_time'] ? date('Y/m/d H:i', strtotime($order['pickup_time'])) : 'N/A' ?></td>
+                                    <td><small><?= htmlspecialchars((string)($order['notes'] ?? '')) ?: '<em style="color: #999;">' . htmlspecialchars((string)__('no_notes')) . '</em>' ?></small></td>
+                                    <td><?= htmlspecialchars((string)($order['items'] ?? '')) ?></td>
+                                    <td>¥<?= number_format((float)$order['total_amount'], 0) ?></td>
+                                    <td><?= !empty($order['pickup_time']) ? date('Y/m/d H:i', (int)strtotime((string)$order['pickup_time'])) : 'N/A' ?></td>
                                     <td>
                                         <form method="post" style="display:inline;">
-                                            <input type="hidden" name="csrf_token" value="<?= getCsrfToken() ?>">
-                                            <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                                            <input type="hidden" name="order_id" value="<?= (int)$order['id'] ?>">
                                             <select name="status" class="status-select" onchange="this.form.submit()">
                                                 <?php foreach (['pending','confirmed','preparing','ready','completed','cancelled'] as $status): ?>
-                                                    <option value="<?= $status ?>" <?= $order['status'] === $status ? 'selected' : '' ?>><?= __('status_' . $status) ?></option>
+                                                    <option value="<?= htmlspecialchars($status) ?>" <?= $order['status'] === $status ? 'selected' : '' ?>><?= htmlspecialchars((string)__('status_' . $status)) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                             <input type="hidden" name="update_status" value="1">
                                         </form>
                                     </td>
                                     <td>
-                                        <a href="order_details.php?id=<?= $order['id'] ?>" class="btn"><?= __('view_details') ?></a>
+                                        <a href="order_details.php?id=<?= (int)$order['id'] ?>" class="btn"><?= htmlspecialchars((string)__('view_details')) ?></a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
