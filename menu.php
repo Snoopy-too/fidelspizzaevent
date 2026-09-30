@@ -121,8 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
 
                 $db->commit();
 
-                // Send email notifications
-                $emailSent = sendOrderEmailNotifications($order_id);
+                // Send email notifications to customer and all configured admin emails
+                $emailSent = $container->getSendOrderNotificationUseCase()->execute($order_id, 'created');
 
                 // Get user's email to display on success page
                 $userStmt = $db->prepare("SELECT email FROM users WHERE id = ?");

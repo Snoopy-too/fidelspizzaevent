@@ -238,7 +238,8 @@ return [
     'registration_code' => 'Registration Code',
     'landing_page_content' => 'Landing Page Content',
     'menu_page_content' => 'Menu Page Content',
-    'admin_email_notification' => 'Admin Email (for notifications)',
+    'admin_email_notification' => 'Admin Email 1 (for order notifications)',
+    'admin_email_notification_2' => 'Admin Email 2 (for order notifications - optional)',
     
     // Reports
     'reports_title' => 'Reports & Analytics',

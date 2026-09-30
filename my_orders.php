@@ -49,6 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_order'])) {
     if ($order_id) {
         $stmt = $db->prepare("UPDATE orders SET status='cancelled', updated_at=NOW() WHERE id=? AND user_id=? AND status IN ('pending','confirmed')");
         $stmt->execute([$order_id, $_SESSION['user_id']]);
+        if ($stmt->rowCount() > 0) {
+            $container->getSendOrderNotificationUseCase()->execute((int)$order_id, 'cancelled');
+        }
         setFlash('success', 'Order cancelled successfully.');
     }
     redirect('my_orders.php');

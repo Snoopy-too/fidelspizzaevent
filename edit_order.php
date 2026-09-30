@@ -75,8 +75,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $total_amount = 0.0;
             $total_pizzas = 0;
             $has_items = false;
+            $cancelled_lines = [];
 
             foreach ($order_items as $item) {
+                $prev_qty = (int)$item['quantity'];
+                $prev_sub = $prev_qty * (float)$item['price'];
+                $cancelled_lines[] = "{$item['name']} x{$prev_qty} (¥" . number_format($prev_sub) . ")";
+
                 $field_name = "quantity_{$item['order_item_id']}";
                 $new_qty = max(0, min(15, (int)($_POST[$field_name] ?? $item['quantity'])));
 
@@ -123,8 +128,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $db->commit();
 
+            $notificationUseCase = $container->getSendOrderNotificationUseCase();
             if ($has_items) {
-                sendOrderEmailNotifications($order_id, true);
+                $notificationUseCase->execute($order_id, 'updated');
+            } else {
+                $notificationUseCase->execute($order_id, 'cancelled', implode("\n", $cancelled_lines));
             }
 
             redirect('my_orders.php');

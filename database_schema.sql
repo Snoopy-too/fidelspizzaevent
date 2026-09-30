@@ -67,7 +67,9 @@ INSERT INTO `email_templates` (`id`, `template_name`, `subject`, `body`, `create
 (2, 'order_confirmation', 'Your Pizza Order Confirmation - #{{order_number}}', 'Hello {{first_name}},\n\nThank you for your pizza order!\n\nOrder Number: {{order_number}}\nTotal Amount: ¥{{total_amount}}\nEvent Date: {{event_date}}\nLocation: {{event_location}}\n\nOrder Details:\n{{order_items}}\n\nPlease bring your order number and ¥{{total_amount}} when picking up your pizza.\n\nBest regards,\nFidel\'s Pizza Team', '2025-09-16 06:39:32', '2025-09-16 06:39:32'),
 (3, 'admin_order_notification', 'New Pizza Order Received - #{{order_number}}', 'A new pizza order has been received:\n\nOrder Number: {{order_number}}\nCustomer: {{customer_name}} ({{customer_email}})\nTotal Amount: ¥{{total_amount}}\n\nOrder Details:\n{{order_items}}\n\nPlease log in to the admin panel to manage this order.', '2025-09-16 06:39:32', '2025-09-16 06:39:32'),
 (4, 'order_updated', 'Your Pizza Order #{{order_number}} Has Been Updated', 'Hello {{first_name}},\n\nThis is a confirmation that your pizza order has been updated.\n\nOrder Number: {{order_number}}\nNew Total Amount: {{total_amount}}\n\nUpdated Order Details:\n{{order_items}}\n\nBest regards,\nFidel\'s Pizza Team', '2025-09-17 11:08:30', '2025-09-17 11:08:30'),
-(5, 'admin_order_updated_notification', 'Order Updated - #{{order_number}}', 'An existing pizza order has been updated:\n\nOrder Number: {{order_number}}\nCustomer: {{customer_name}} ({{customer_email}})\nNew Total Amount: {{total_amount}}\n\nUpdated Order Details:\n{{order_items}}\n\nPlease log in to the admin panel to review this order.', '2025-09-17 11:08:30', '2025-09-17 11:08:30');
+(5, 'admin_order_updated_notification', 'Order Updated - #{{order_number}}', 'An existing pizza order has been updated:\n\nOrder Number: {{order_number}}\nCustomer: {{customer_name}} ({{customer_email}})\nNew Total Amount: {{total_amount}}\n\nUpdated Order Details:\n{{order_items}}\n\nPlease log in to the admin panel to review this order.', '2025-09-17 11:08:30', '2025-09-17 11:08:30'),
+(6, 'order_cancelled', 'Your Pizza Order #{{order_number}} Has Been Cancelled', 'Hello {{first_name}},\n\nThis is a confirmation that your pizza order #{{order_number}} has been cancelled.\n\nOrder Number: {{order_number}}\nPickup Time: {{pickup_time}}\n\nCancelled Order Details:\n{{order_items}}\n\nBest regards,\nFidel\'s Pizza Team', '2025-09-17 11:08:30', '2025-09-17 11:08:30'),
+(7, 'admin_order_cancelled_notification', 'Order Cancelled - #{{order_number}}', 'A pizza order has been cancelled:\n\nOrder Number: {{order_number}}\nCustomer: {{customer_name}} ({{customer_email}})\nPickup Time: {{pickup_time}}\n\nCancelled Order Details:\n{{order_items}}\n\nPlease log in to the admin panel to review orders.', '2025-09-17 11:08:30', '2025-09-17 11:08:30');
 
 -- --------------------------------------------------------
 
@@ -170,6 +172,7 @@ CREATE TABLE `site_config` (
   `landing_images` text,
   `menu_content` text,
   `admin_email` varchar(255) DEFAULT NULL,
+  `admin_email_2` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

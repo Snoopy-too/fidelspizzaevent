@@ -238,7 +238,8 @@ return [
     'registration_code' => '登録コード',
     'landing_page_content' => 'ランディングページ本文',
     'menu_page_content' => 'メニューページ本文',
-    'admin_email_notification' => '管理者メールアドレス（通知用）',
+    'admin_email_notification' => '管理者メールアドレス 1（通知用）',
+    'admin_email_notification_2' => '管理者メールアドレス 2（通知用・任意）',
     
     // Reports
     'reports_title' => 'レポート＆分析',

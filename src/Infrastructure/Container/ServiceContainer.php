@@ -147,4 +147,18 @@ final class ServiceContainer
         }
         return $this->managePickupTimeSlotsUseCase;
     }
+
+    private ?\FidelsPizza\Application\UseCase\SendOrderNotificationUseCase $sendOrderNotificationUseCase = null;
+
+    public function getSendOrderNotificationUseCase(): \FidelsPizza\Application\UseCase\SendOrderNotificationUseCase
+    {
+        if ($this->sendOrderNotificationUseCase === null) {
+            $this->sendOrderNotificationUseCase = new \FidelsPizza\Application\UseCase\SendOrderNotificationUseCase(
+                $this->pdo,
+                $this->getPickupTimeSlotRepository(),
+                $this->getEmailSender()
+            );
+        }
+        return $this->sendOrderNotificationUseCase;
+    }
 }

@@ -48,8 +48,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($order_id && in_array($new_status, ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'], true)) {
             try {
+                $prevStmt = $db->prepare("SELECT status FROM orders WHERE id = ?");
+                $prevStmt->execute([$order_id]);
+                $prevStatus = (string)$prevStmt->fetchColumn();
+
                 $stmt = $db->prepare("UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?");
                 $stmt->execute([$new_status, $order_id]);
+                if ($new_status === 'cancelled' && $prevStatus !== 'cancelled') {
+                    $container->getSendOrderNotificationUseCase()->execute($order_id, 'cancelled');
+                }
                 $success_message = __('status_update_success');
             } catch (Exception $e) {
                 $error_message = __('status_update_error');
@@ -64,6 +71,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $placeholders = str_repeat('?,', count($selected_orders) - 1) . '?';
                 $stmt = $db->prepare("UPDATE orders SET status = ?, updated_at = NOW() WHERE id IN ($placeholders)");
                 $stmt->execute(array_merge([$action], $selected_orders));
+                if ($action === 'cancelled') {
+                    $notificationUseCase = $container->getSendOrderNotificationUseCase();
+                    foreach ($selected_orders as $cancelledOrderId) {
+                        $notificationUseCase->execute((int)$cancelledOrderId, 'cancelled');
+                    }
+                }
                 $success_message = __('bulk_action_success');
             } catch (Exception $e) {
                 $error_message = __('bulk_action_error');

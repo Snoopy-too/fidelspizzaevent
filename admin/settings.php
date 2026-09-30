@@ -10,6 +10,8 @@ requireAdmin();
 $container = getServiceContainer();
 $db = $container->getPdo();
 $manageSlotsUseCase = $container->getManagePickupTimeSlotsUseCase();
+// Ensure admin_email_2 column and cancellation templates exist before any transaction
+$container->getSendOrderNotificationUseCase();
 
 // Fetch current config
 $stmt = $db->prepare("SELECT * FROM site_config WHERE id = 1");
@@ -33,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $db->prepare("
             UPDATE site_config
-            SET site_title = ?, event_location = ?, event_date = ?, registration_code = ?, landing_content = ?, menu_content = ?, admin_email = ?
+            SET site_title = ?, event_location = ?, event_date = ?, registration_code = ?, landing_content = ?, menu_content = ?, admin_email = ?, admin_email_2 = ?
             WHERE id = 1
         ");
         $stmt->execute([
@@ -44,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (string)($_POST['landing_content'] ?? ''),
             (string)($_POST['menu_content'] ?? ''),
             trim((string)($_POST['admin_email'] ?? '')),
+            trim((string)($_POST['admin_email_2'] ?? '')),
         ]);
 
         $rawSlots = isset($_POST['slots']) && is_array($_POST['slots']) ? $_POST['slots'] : [];
@@ -67,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $config['landing_content'] = $_POST['landing_content'] ?? ($config['landing_content'] ?? '');
         $config['menu_content'] = $_POST['menu_content'] ?? ($config['menu_content'] ?? '');
         $config['admin_email'] = $_POST['admin_email'] ?? ($config['admin_email'] ?? '');
+        $config['admin_email_2'] = $_POST['admin_email_2'] ?? ($config['admin_email_2'] ?? '');
     }
 }
 
@@ -304,7 +308,10 @@ require_once __DIR__ . '/includes/header.php';
                 <textarea name="menu_content" id="menu_content"><?= htmlspecialchars((string)($config['menu_content'] ?? '')) ?></textarea>
 
                 <label for="admin_email"><?= htmlspecialchars((string)__('admin_email_notification')) ?></label>
-                <input type="email" name="admin_email" id="admin_email" value="<?= htmlspecialchars((string)($config['admin_email'] ?? '')) ?>">
+                <input type="email" name="admin_email" id="admin_email" value="<?= htmlspecialchars((string)($config['admin_email'] ?? '')) ?>" placeholder="admin1@example.com">
+
+                <label for="admin_email_2"><?= htmlspecialchars((string)__('admin_email_notification_2')) ?></label>
+                <input type="email" name="admin_email_2" id="admin_email_2" value="<?= htmlspecialchars((string)($config['admin_email_2'] ?? '')) ?>" placeholder="admin2@example.com">
 
                 <div style="margin-top: 20px;">
                     <button type="submit" class="btn btn-save"><?= htmlspecialchars((string)__('save_settings')) ?></button>
