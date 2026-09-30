@@ -385,7 +385,7 @@ h1 {color:#d32f2f; font-size:2.5em; margin-bottom:10px;}
                         <?php if ($slot->getLabel() !== ''): ?>
                             <span class="slot-card-label"><?= htmlspecialchars($slot->getLabel()) ?></span>
                         <?php endif; ?>
-                        <span class="slot-card-time"><?= htmlspecialchars($slot->getSlotTime()) ?></span>
+                        <span class="slot-card-time"><?= htmlspecialchars($slot->getTimeRange()) ?></span>
                         <?php if ($isFull): ?>
                             <span class="slot-card-capacity"><?= htmlspecialchars((string)__('slot_full_badge')) ?></span>
                         <?php elseif ($remPizzas !== null): ?>

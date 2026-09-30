@@ -35,6 +35,7 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
                         `config_id` INT(11) NOT NULL DEFAULT 1,
                         `label` VARCHAR(100) NOT NULL DEFAULT '',
                         `slot_time` TIME NOT NULL,
+                        `end_time` TIME NOT NULL DEFAULT '12:30:00',
                         `max_pizzas` INT(11) DEFAULT NULL,
                         `max_orders` INT(11) DEFAULT NULL,
                         `is_active` TINYINT(1) NOT NULL DEFAULT 1,
@@ -51,13 +52,26 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
                 ");
 
                 $stmt = $this->pdo->prepare("
-                    INSERT INTO `pickup_time_slots` (`config_id`, `label`, `slot_time`, `max_pizzas`, `max_orders`, `is_active`, `sort_order`)
+                    INSERT INTO `pickup_time_slots` (`config_id`, `label`, `slot_time`, `end_time`, `max_pizzas`, `max_orders`, `is_active`, `sort_order`)
                     VALUES
-                        (1, 'Pickup Time A', '11:30:00', NULL, NULL, 1, 0),
-                        (1, 'Pickup Time B', '12:30:00', NULL, NULL, 1, 1),
-                        (1, 'Pickup Time C', '13:30:00', NULL, NULL, 1, 2)
+                        (1, 'Pickup Time A', '11:30:00', '12:30:00', NULL, NULL, 1, 0),
+                        (1, 'Pickup Time B', '12:30:00', '13:30:00', NULL, NULL, 1, 1),
+                        (1, 'Pickup Time C', '13:30:00', '14:30:00', NULL, NULL, 1, 2)
                 ");
                 $stmt->execute();
+            } else {
+                $endTimeColCheck = $this->pdo->query("SHOW COLUMNS FROM `pickup_time_slots` LIKE 'end_time'");
+                if ($endTimeColCheck !== false && $endTimeColCheck->rowCount() === 0) {
+                    $this->pdo->exec("
+                        ALTER TABLE `pickup_time_slots`
+                            ADD COLUMN `end_time` TIME NOT NULL DEFAULT '12:30:00' AFTER `slot_time`;
+                    ");
+                    $this->pdo->exec("
+                        UPDATE `pickup_time_slots`
+                        SET `end_time` = ADDTIME(`slot_time`, '01:00:00')
+                        WHERE `end_time` <= `slot_time`;
+                    ");
+                }
             }
 
             $colCheck = $this->pdo->query("SHOW COLUMNS FROM `orders` LIKE 'pickup_slot_id'");
@@ -164,14 +178,14 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
 
             $updateStmt = $this->pdo->prepare("
                 UPDATE `pickup_time_slots`
-                SET `label` = ?, `slot_time` = ?, `max_pizzas` = ?, `max_orders` = ?, `is_active` = ?, `sort_order` = ?
+                SET `label` = ?, `slot_time` = ?, `end_time` = ?, `max_pizzas` = ?, `max_orders` = ?, `is_active` = ?, `sort_order` = ?
                 WHERE `id` = ? AND `config_id` = ?
             ");
 
             $insertStmt = $this->pdo->prepare("
                 INSERT INTO `pickup_time_slots`
-                    (`config_id`, `label`, `slot_time`, `max_pizzas`, `max_orders`, `is_active`, `sort_order`)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (`config_id`, `label`, `slot_time`, `end_time`, `max_pizzas`, `max_orders`, `is_active`, `sort_order`)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             foreach ($slots as $slot) {
@@ -180,6 +194,7 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
                     $updateStmt->execute([
                         $slot->getLabel(),
                         $slot->getSlotTimeForDb(),
+                        $slot->getEndTimeForDb(),
                         $slot->getMaxPizzas(),
                         $slot->getMaxOrders(),
                         $slot->isActive() ? 1 : 0,
@@ -193,6 +208,7 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
                         $configId,
                         $slot->getLabel(),
                         $slot->getSlotTimeForDb(),
+                        $slot->getEndTimeForDb(),
                         $slot->getMaxPizzas(),
                         $slot->getMaxOrders(),
                         $slot->isActive() ? 1 : 0,
@@ -265,7 +281,6 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
 
             return $result;
         } catch (PDOException) {
-            // Gracefully return empty array if table has not been migrated yet
             return [];
         }
     }
@@ -338,11 +353,21 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
      */
     private function hydrate(array $row, int $bookedPizzas, int $bookedOrders): PickupTimeSlot
     {
+        $startTime = substr((string)$row['slot_time'], 0, 5);
+        $endTime = isset($row['end_time']) && trim((string)$row['end_time']) !== ''
+            ? substr((string)$row['end_time'], 0, 5)
+            : $this->computeDefaultEndTime($startTime);
+
+        if ($endTime <= $startTime) {
+            $endTime = $this->computeDefaultEndTime($startTime);
+        }
+
         return new PickupTimeSlot(
             id: (int)$row['id'],
             configId: (int)$row['config_id'],
             label: (string)($row['label'] ?? ''),
-            slotTime: substr((string)$row['slot_time'], 0, 5),
+            slotTime: $startTime,
+            endTime: $endTime,
             maxPizzas: $row['max_pizzas'] !== null ? (int)$row['max_pizzas'] : null,
             maxOrders: $row['max_orders'] !== null ? (int)$row['max_orders'] : null,
             isActive: (bool)$row['is_active'],
@@ -352,5 +377,16 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
             createdAt: isset($row['created_at']) ? (string)$row['created_at'] : null,
             updatedAt: isset($row['updated_at']) ? (string)$row['updated_at'] : null
         );
+    }
+
+    private function computeDefaultEndTime(string $startTime): string
+    {
+        $parts = explode(':', $startTime);
+        $hour = isset($parts[0]) ? (int)$parts[0] : 12;
+        $min = isset($parts[1]) ? (int)$parts[1] : 0;
+        if ($hour >= 23) {
+            return '23:59';
+        }
+        return sprintf('%02d:%02d', $hour + 1, $min);
     }
 }

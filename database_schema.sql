@@ -475,6 +475,7 @@ CREATE TABLE `pickup_time_slots` (
   `config_id` int(11) NOT NULL DEFAULT '1',
   `label` varchar(100) NOT NULL DEFAULT '',
   `slot_time` time NOT NULL,
+  `end_time` time NOT NULL DEFAULT '12:30:00',
   `max_pizzas` int(11) DEFAULT NULL,
   `max_orders` int(11) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',

@@ -274,7 +274,7 @@ input[type=number] { width:65px; padding:6px; border-radius: 5px; border: 1px so
                         <?php if ($slot->getLabel() !== ''): ?>
                             <span class="slot-card-label"><?= htmlspecialchars($slot->getLabel()) ?></span>
                         <?php endif; ?>
-                        <span class="slot-card-time"><?= htmlspecialchars($slot->getSlotTime()) ?></span>
+                        <span class="slot-card-time"><?= htmlspecialchars($slot->getTimeRange()) ?></span>
                         <?php if ($isFull): ?>
                             <span class="slot-card-capacity"><?= htmlspecialchars((string)__('slot_full_badge')) ?></span>
                         <?php elseif ($remPizzas !== null): ?>

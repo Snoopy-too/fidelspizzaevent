@@ -13,6 +13,7 @@ try {
             `config_id` INT(11) NOT NULL DEFAULT 1,
             `label` VARCHAR(100) NOT NULL DEFAULT '',
             `slot_time` TIME NOT NULL,
+            `end_time` TIME NOT NULL DEFAULT '12:30:00',
             `max_pizzas` INT(11) DEFAULT NULL,
             `max_orders` INT(11) DEFAULT NULL,
             `is_active` TINYINT(1) NOT NULL DEFAULT 1,
@@ -27,6 +28,20 @@ try {
                 ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
+
+    // 1b. Add end_time column if table existed prior to range update
+    $endTimeCheck = $db->query("SHOW COLUMNS FROM `pickup_time_slots` LIKE 'end_time'");
+    if ($endTimeCheck->rowCount() === 0) {
+        $db->exec("
+            ALTER TABLE `pickup_time_slots`
+                ADD COLUMN `end_time` TIME NOT NULL DEFAULT '12:30:00' AFTER `slot_time`;
+        ");
+        $db->exec("
+            UPDATE `pickup_time_slots`
+            SET `end_time` = ADDTIME(`slot_time`, '01:00:00')
+            WHERE `end_time` <= `slot_time`;
+        ");
+    }
 
     // 2. Add pickup_slot_id column and foreign key to orders table if not already present
     $colCheck = $db->query("SHOW COLUMNS FROM `orders` LIKE 'pickup_slot_id'");
@@ -45,16 +60,16 @@ try {
     $count = (int)$db->query("SELECT COUNT(*) FROM `pickup_time_slots`")->fetchColumn();
     if ($count === 0) {
         $stmt = $db->prepare("
-            INSERT INTO `pickup_time_slots` (`config_id`, `label`, `slot_time`, `max_pizzas`, `max_orders`, `is_active`, `sort_order`)
+            INSERT INTO `pickup_time_slots` (`config_id`, `label`, `slot_time`, `end_time`, `max_pizzas`, `max_orders`, `is_active`, `sort_order`)
             VALUES
-                (1, 'Pickup Time A', '11:30:00', NULL, NULL, 1, 0),
-                (1, 'Pickup Time B', '12:30:00', NULL, NULL, 1, 1),
-                (1, 'Pickup Time C', '13:30:00', NULL, NULL, 1, 2)
+                (1, 'Pickup Time A', '11:30:00', '12:30:00', NULL, NULL, 1, 0),
+                (1, 'Pickup Time B', '12:30:00', '13:30:00', NULL, NULL, 1, 1),
+                (1, 'Pickup Time C', '13:30:00', '14:30:00', NULL, NULL, 1, 2)
         ");
         $stmt->execute();
     }
 
-    echo "Migration for 'pickup_time_slots' and 'orders.pickup_slot_id' completed successfully.\n";
+    echo "Migration for 'pickup_time_slots' (with start & end time) and 'orders.pickup_slot_id' completed successfully.\n";
 } catch (\Throwable $e) {
     echo "Migration failed: " . $e->getMessage() . "\n";
     exit(1);

@@ -8,6 +8,7 @@ use InvalidArgumentException;
 final class PickupTimeSlot
 {
     private readonly string $normalizedSlotTime;
+    private readonly string $normalizedEndTime;
     private readonly string $cleanLabel;
 
     public function __construct(
@@ -15,6 +16,7 @@ final class PickupTimeSlot
         private readonly int $configId,
         string $label,
         string $slotTime,
+        string $endTime,
         private readonly ?int $maxPizzas = null,
         private readonly ?int $maxOrders = null,
         private readonly bool $isActive = true,
@@ -33,11 +35,23 @@ final class PickupTimeSlot
         }
         $this->cleanLabel = $trimmedLabel;
 
-        $trimmedTime = trim($slotTime);
-        if (!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/', $trimmedTime)) {
-            throw new InvalidArgumentException('Invalid pickup time format. Expected HH:MM (24-hour).');
+        $trimmedStart = trim($slotTime);
+        if (!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/', $trimmedStart)) {
+            throw new InvalidArgumentException('Invalid start time format. Expected HH:MM (24-hour).');
         }
-        $this->normalizedSlotTime = substr($trimmedTime, 0, 5);
+        $this->normalizedSlotTime = substr($trimmedStart, 0, 5);
+
+        $trimmedEnd = trim($endTime);
+        if (!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/', $trimmedEnd)) {
+            throw new InvalidArgumentException('Invalid end time format. Expected HH:MM (24-hour).');
+        }
+        $this->normalizedEndTime = substr($trimmedEnd, 0, 5);
+
+        if ($this->normalizedEndTime <= $this->normalizedSlotTime) {
+            throw new InvalidArgumentException(
+                sprintf('End time (%s) must be after start time (%s).', $this->normalizedEndTime, $this->normalizedSlotTime)
+            );
+        }
 
         if ($this->maxPizzas !== null && $this->maxPizzas < 1) {
             throw new InvalidArgumentException('Maximum pizzas per slot must be at least 1 or left blank for unlimited.');
@@ -64,7 +78,7 @@ final class PickupTimeSlot
     }
 
     /**
-     * Returns time in HH:MM format (e.g., "12:30").
+     * Returns start time in HH:MM format (e.g., "11:30").
      */
     public function getSlotTime(): string
     {
@@ -72,11 +86,35 @@ final class PickupTimeSlot
     }
 
     /**
-     * Returns time in HH:MM:SS format for MySQL TIME comparison/storage.
+     * Returns end time in HH:MM format (e.g., "12:30").
+     */
+    public function getEndTime(): string
+    {
+        return $this->normalizedEndTime;
+    }
+
+    /**
+     * Returns start time in HH:MM:SS format for MySQL TIME comparison/storage.
      */
     public function getSlotTimeForDb(): string
     {
         return $this->normalizedSlotTime . ':00';
+    }
+
+    /**
+     * Returns end time in HH:MM:SS format for MySQL TIME storage.
+     */
+    public function getEndTimeForDb(): string
+    {
+        return $this->normalizedEndTime . ':00';
+    }
+
+    /**
+     * Returns formatted time range (e.g., "11:30 to 12:30").
+     */
+    public function getTimeRange(): string
+    {
+        return $this->normalizedSlotTime . ' to ' . $this->normalizedEndTime;
     }
 
     public function getMaxPizzas(): ?int
@@ -150,9 +188,9 @@ final class PickupTimeSlot
     public function getDisplayName(): string
     {
         if ($this->cleanLabel !== '') {
-            return $this->cleanLabel . ' (' . $this->normalizedSlotTime . ')';
+            return $this->cleanLabel . ' (' . $this->getTimeRange() . ')';
         }
-        return $this->normalizedSlotTime;
+        return $this->getTimeRange();
     }
 
     public function toDatetimeString(string $eventDate): string
@@ -184,6 +222,8 @@ final class PickupTimeSlot
             'config_id' => $this->configId,
             'label' => $this->cleanLabel,
             'slot_time' => $this->normalizedSlotTime,
+            'end_time' => $this->normalizedEndTime,
+            'time_range' => $this->getTimeRange(),
             'max_pizzas' => $this->maxPizzas,
             'max_orders' => $this->maxOrders,
             'is_active' => $this->isActive,

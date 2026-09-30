@@ -89,12 +89,13 @@ final class ManagePickupTimeSlotsUseCase
     public function saveAdminSlots(array $rawSlots, int $configId = 1): void
     {
         $domainSlots = [];
-        $seenTimes = [];
+        $seenStartTimes = [];
         $sortIndex = 0;
 
         foreach ($rawSlots as $row) {
-            $rawTime = trim((string)($row['slot_time'] ?? ''));
-            if ($rawTime === '') {
+            $rawStartTime = trim((string)($row['slot_time'] ?? ''));
+            $rawEndTime = trim((string)($row['end_time'] ?? ''));
+            if ($rawStartTime === '' && $rawEndTime === '') {
                 continue;
             }
 
@@ -113,20 +114,21 @@ final class ManagePickupTimeSlotsUseCase
                 id: $id,
                 configId: $configId,
                 label: $label,
-                slotTime: $rawTime,
+                slotTime: $rawStartTime,
+                endTime: $rawEndTime,
                 maxPizzas: $maxPizzas,
                 maxOrders: $maxOrders,
                 isActive: $isActive,
                 sortOrder: $sortIndex
             );
 
-            $normalizedTime = $slot->getSlotTime();
-            if (isset($seenTimes[$normalizedTime])) {
+            $normalizedStart = $slot->getSlotTime();
+            if (isset($seenStartTimes[$normalizedStart])) {
                 throw new InvalidArgumentException(
-                    sprintf('Duplicate pickup time "%s". Each pickup time slot must have a unique time.', $normalizedTime)
+                    sprintf('Duplicate pickup start time "%s". Each pickup time slot must have a unique start time.', $normalizedStart)
                 );
             }
-            $seenTimes[$normalizedTime] = true;
+            $seenStartTimes[$normalizedStart] = true;
 
             $domainSlots[] = $slot;
             $sortIndex++;

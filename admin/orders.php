@@ -1,13 +1,42 @@
 <?php
 declare(strict_types=1);
 
-require_once '../config.php';
+require_once __DIR__ . '/../src/bootstrap.php';
 require_once __DIR__ . '/../helpers.php';
 
 requireAdmin();
 
+$container = getServiceContainer();
 $config = getSiteConfig();
-$db = getDB();
+$db = $container->getPdo();
+$manageSlotsUseCase = $container->getManagePickupTimeSlotsUseCase();
+
+$allSlots = $manageSlotsUseCase->getAllSlots(1);
+$slotsById = [];
+$slotsByStartTime = [];
+foreach ($allSlots as $slot) {
+    if ($slot->getId() !== null) {
+        $slotsById[$slot->getId()] = $slot;
+    }
+    $slotsByStartTime[$slot->getSlotTime()] = $slot;
+}
+
+function formatAdminPickupDisplay(?string $pickupDatetime, ?int $slotId, array $slotsById, array $slotsByStartTime): string {
+    if ($pickupDatetime === null || trim($pickupDatetime) === '') {
+        return 'N/A';
+    }
+    $ts = strtotime($pickupDatetime);
+    if ($ts === false) {
+        return $pickupDatetime;
+    }
+    $timeKey = date('H:i', $ts);
+    $matchedSlot = ($slotId !== null && $slotId > 0 && isset($slotsById[$slotId]))
+        ? $slotsById[$slotId]
+        : ($slotsByStartTime[$timeKey] ?? null);
+
+    $timeRange = $matchedSlot !== null ? $matchedSlot->getDisplayName() : $timeKey;
+    return date('Y/m/d', $ts) . ' ' . $timeRange;
+}
 
 // Handle POST actions (status update / bulk actions)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -159,7 +188,7 @@ require_once __DIR__ . '/includes/header.php';
                     <?php else: ?>
                         <?php foreach ($pickup_orders as $pickup_time => $pizzas): ?>
                             <tr>
-                                <td><strong><?= date('Y/m/d H:i', (int)strtotime((string)$pickup_time)) ?></strong></td>
+                                <td><strong><?= htmlspecialchars(formatAdminPickupDisplay((string)$pickup_time, null, $slotsById, $slotsByStartTime)) ?></strong></td>
                                 <?php foreach ($pizza_types as $pizza): ?>
                                     <td><?= isset($pizzas[$pizza]) ? (int)$pizzas[$pizza] : 0 ?></td>
                                 <?php endforeach; ?>
@@ -249,7 +278,7 @@ require_once __DIR__ . '/includes/header.php';
                                     <td><small><?= htmlspecialchars((string)($order['notes'] ?? '')) ?: '<em style="color: #999;">' . htmlspecialchars((string)__('no_notes')) . '</em>' ?></small></td>
                                     <td><?= htmlspecialchars((string)($order['items'] ?? '')) ?></td>
                                     <td>¥<?= number_format((float)$order['total_amount'], 0) ?></td>
-                                    <td><?= !empty($order['pickup_time']) ? date('Y/m/d H:i', (int)strtotime((string)$order['pickup_time'])) : 'N/A' ?></td>
+                                    <td><?= htmlspecialchars(formatAdminPickupDisplay(isset($order['pickup_time']) ? (string)$order['pickup_time'] : null, isset($order['pickup_slot_id']) ? (int)$order['pickup_slot_id'] : null, $slotsById, $slotsByStartTime)) ?></td>
                                     <td>
                                         <form method="post" style="display:inline;">
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">

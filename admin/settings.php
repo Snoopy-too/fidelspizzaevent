@@ -217,19 +217,20 @@ require_once __DIR__ . '/includes/header.php';
                     <table class="pickup-slots-table" id="pickupSlotsTable">
                         <thead>
                             <tr>
-                                <th style="min-width: 180px;"><?= htmlspecialchars((string)__('slot_label_column')) ?></th>
-                                <th style="min-width: 135px;"><?= htmlspecialchars((string)__('slot_time_column')) ?></th>
-                                <th style="min-width: 120px;"><?= htmlspecialchars((string)__('slot_max_pizzas_column')) ?></th>
-                                <th style="min-width: 120px;"><?= htmlspecialchars((string)__('slot_max_orders_column')) ?></th>
-                                <th style="width: 70px; text-align: center;"><?= htmlspecialchars((string)__('slot_active_column')) ?></th>
-                                <th style="min-width: 130px;"><?= htmlspecialchars((string)__('slot_current_bookings_column')) ?></th>
-                                <th style="width: 90px; text-align: center;"><?= htmlspecialchars((string)__('actions')) ?></th>
+                                <th style="min-width: 165px;"><?= htmlspecialchars((string)__('slot_label_column')) ?></th>
+                                <th style="min-width: 125px;"><?= htmlspecialchars((string)__('slot_start_time_column')) ?></th>
+                                <th style="min-width: 125px;"><?= htmlspecialchars((string)__('slot_end_time_column')) ?></th>
+                                <th style="min-width: 110px;"><?= htmlspecialchars((string)__('slot_max_pizzas_column')) ?></th>
+                                <th style="min-width: 110px;"><?= htmlspecialchars((string)__('slot_max_orders_column')) ?></th>
+                                <th style="width: 65px; text-align: center;"><?= htmlspecialchars((string)__('slot_active_column')) ?></th>
+                                <th style="min-width: 125px;"><?= htmlspecialchars((string)__('slot_current_bookings_column')) ?></th>
+                                <th style="width: 85px; text-align: center;"><?= htmlspecialchars((string)__('actions')) ?></th>
                             </tr>
                         </thead>
                         <tbody id="pickupSlotsBody">
                             <?php if (empty($pickupSlots)): ?>
                                 <tr class="empty-slots-row" id="emptySlotsRow">
-                                    <td colspan="7"><?= htmlspecialchars((string)__('no_pickup_slots_configured')) ?></td>
+                                    <td colspan="8"><?= htmlspecialchars((string)__('no_pickup_slots_configured')) ?></td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($pickupSlots as $idx => $slot): ?>
@@ -244,8 +245,16 @@ require_once __DIR__ . '/includes/header.php';
                                         </td>
                                         <td>
                                             <input type="time"
+                                                   class="slot-start-input"
                                                    name="slots[<?= $idx ?>][slot_time]"
                                                    value="<?= htmlspecialchars($slot->getSlotTime()) ?>"
+                                                   required>
+                                        </td>
+                                        <td>
+                                            <input type="time"
+                                                   class="slot-end-input"
+                                                   name="slots[<?= $idx ?>][end_time]"
+                                                   value="<?= htmlspecialchars($slot->getEndTime()) ?>"
                                                    required>
                                         </td>
                                         <td>
@@ -313,23 +322,32 @@ function getNextSuggestedLabel() {
     return 'Pickup Time ' + letter;
 }
 
-function getNextSuggestedTime() {
-    const timeInputs = document.querySelectorAll('#pickupSlotsBody input[type="time"]');
-    if (timeInputs.length === 0) {
-        return '11:30';
-    }
-    const lastValue = timeInputs[timeInputs.length - 1].value;
-    if (!lastValue || !lastValue.includes(':')) {
+function addOneHour(timeStr) {
+    if (!timeStr || !timeStr.includes(':')) {
         return '12:30';
     }
-    const parts = lastValue.split(':');
+    const parts = timeStr.split(':');
     let hours = parseInt(parts[0], 10);
     let minutes = parseInt(parts[1], 10);
     if (isNaN(hours) || isNaN(minutes)) {
         return '12:30';
     }
-    hours = Math.min(23, hours + 1);
-    return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+    if (hours >= 23) {
+        return '23:59';
+    }
+    return String(hours + 1).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+}
+
+function getNextSuggestedTimeRange() {
+    const endInputs = document.querySelectorAll('#pickupSlotsBody .slot-end-input');
+    if (endInputs.length === 0) {
+        return { start: '11:30', end: '12:30' };
+    }
+    const lastEnd = endInputs[endInputs.length - 1].value || '12:30';
+    return {
+        start: lastEnd,
+        end: addOneHour(lastEnd)
+    };
 }
 
 function addPickupSlotRow() {
@@ -341,7 +359,7 @@ function addPickupSlotRow() {
     const tbody = document.getElementById('pickupSlotsBody');
     const idx = nextSlotIndex++;
     const suggestedLabel = getNextSuggestedLabel();
-    const suggestedTime = getNextSuggestedTime();
+    const suggestedRange = getNextSuggestedTimeRange();
 
     const tr = document.createElement('tr');
     tr.className = 'pickup-slot-row';
@@ -356,8 +374,16 @@ function addPickupSlotRow() {
         </td>
         <td>
             <input type="time"
+                   class="slot-start-input"
                    name="slots[${idx}][slot_time]"
-                   value="${suggestedTime}"
+                   value="${suggestedRange.start}"
+                   required>
+        </td>
+        <td>
+            <input type="time"
+                   class="slot-end-input"
+                   name="slots[${idx}][end_time]"
+                   value="${suggestedRange.end}"
                    required>
         </td>
         <td>
@@ -404,7 +430,7 @@ function removePickupSlotRow(btn) {
         const emptyTr = document.createElement('tr');
         emptyTr.className = 'empty-slots-row';
         emptyTr.id = 'emptySlotsRow';
-        emptyTr.innerHTML = `<td colspan="7"><?= htmlspecialchars((string)__('no_pickup_slots_configured'), ENT_QUOTES) ?></td>`;
+        emptyTr.innerHTML = `<td colspan="8"><?= htmlspecialchars((string)__('no_pickup_slots_configured'), ENT_QUOTES) ?></td>`;
         tbody.appendChild(emptyTr);
     }
 }

@@ -1,11 +1,42 @@
 <?php
-require_once 'config.php';
+require_once __DIR__ . '/src/bootstrap.php';
 require_once __DIR__ . '/helpers.php';
 
 requireLogin();
 
+$container = getServiceContainer();
 $config = getSiteConfig();
-$db = getDB();
+$db = $container->getPdo();
+$manageSlotsUseCase = $container->getManagePickupTimeSlotsUseCase();
+
+$allSlots = $manageSlotsUseCase->getAllSlots(1);
+$slotsById = [];
+$slotsByStartTime = [];
+foreach ($allSlots as $slot) {
+    if ($slot->getId() !== null) {
+        $slotsById[$slot->getId()] = $slot;
+    }
+    $slotsByStartTime[$slot->getSlotTime()] = $slot;
+}
+
+function formatOrderPickupRange(array $order, array $slotsById, array $slotsByStartTime, bool $includeDate = true): string {
+    $pickupTime = (string)($order['pickup_time'] ?? '');
+    if ($pickupTime === '') {
+        return '';
+    }
+    $ts = strtotime($pickupTime);
+    if ($ts === false) {
+        return $pickupTime;
+    }
+    $slotId = isset($order['pickup_slot_id']) ? (int)$order['pickup_slot_id'] : 0;
+    $timeKey = date('H:i', $ts);
+    $matchedSlot = ($slotId > 0 && isset($slotsById[$slotId]))
+        ? $slotsById[$slotId]
+        : ($slotsByStartTime[$timeKey] ?? null);
+
+    $timePart = $matchedSlot !== null ? $matchedSlot->getDisplayName() : $timeKey;
+    return $includeDate ? (date('Y/m/d', $ts) . ' ' . $timePart) : $timePart;
+}
 
 // Handle cancel order request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_order'])) {
@@ -110,7 +141,7 @@ h1 { color:#d32f2f; font-size:2.5em; margin-bottom:20px; }
                 <div class="order-date"><?= date('Y年n月j日 H:i', strtotime($order['created_at'])) ?></div>
                 <?php if (!empty($order['pickup_time'])): ?>
                     <div style="margin-top: 4px; color: #e65100; font-weight: bold; font-size: 0.95em;">
-                        ⏰ <?= htmlspecialchars((string)__('pickup_time_label')) ?> <?= date('Y/m/d H:i', strtotime((string)$order['pickup_time'])) ?>
+                        ⏰ <?= htmlspecialchars((string)__('pickup_time_label')) ?> <?= htmlspecialchars(formatOrderPickupRange($order, $slotsById, $slotsByStartTime, true)) ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -142,7 +173,7 @@ h1 { color:#d32f2f; font-size:2.5em; margin-bottom:20px; }
             <h4>📍 <?= __('pickup_info') ?></h4>
             <p><strong><?= __('pickup_date') ?></strong> <?= date('Y年n月j日', strtotime($config['event_date'])) ?></p>
             <?php if(!empty($order['pickup_time'])): ?>
-            <p><strong><?= htmlspecialchars((string)__('pickup_time_label')) ?></strong> <?= date('H:i', strtotime((string)$order['pickup_time'])) ?></p>
+            <p><strong><?= htmlspecialchars((string)__('pickup_time_label')) ?></strong> <?= htmlspecialchars(formatOrderPickupRange($order, $slotsById, $slotsByStartTime, false)) ?></p>
             <?php endif; ?>
             <?php if(!empty($config['event_location'])): ?>
             <p><strong><?= __('pickup_location') ?></strong> <?= htmlspecialchars($config['event_location']) ?></p>
