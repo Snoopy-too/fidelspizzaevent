@@ -404,6 +404,7 @@ return [
     'pickup_time_label' => '受取時間：',
     'change_pickup_time' => '受取時間の変更',
     'quick_select_slot' => '設定済み枠から選択：',
+    'view_customer_site' => '顧客サイトを表示 ↗',
 ];
 
 

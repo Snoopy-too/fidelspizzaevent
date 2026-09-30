@@ -404,6 +404,7 @@ return [
     'pickup_time_label' => 'Pickup Time:',
     'change_pickup_time' => 'Pickup Time',
     'quick_select_slot' => 'Quick-select slot:',
+    'view_customer_site' => 'View Customer Site ↗',
 ];
 
 

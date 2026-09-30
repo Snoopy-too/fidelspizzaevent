@@ -19,9 +19,8 @@ $displayTitle = isset($page_title) ? (string)$page_title : (isset($pageTitle) ? 
 <body>
     <div class="header">
         <div class="header-content">
-            <h1>🍕 <?= htmlspecialchars($displayTitle) ?></h1>
+            <h1><a href="dashboard.php" style="color: inherit; text-decoration: none;">🍕 <?= htmlspecialchars($displayTitle) ?></a></h1>
             <div class="nav-links">
-                <a href="../index.php">🏠 <?= __('home') ?></a>
                 <a href="dashboard.php">📊 <?= __('admin_dashboard') ?></a>
                 <a href="orders.php">📋 <?= __('order_management') ?></a>
                 <a href="users.php">👥 <?= __('user_management') ?></a>
@@ -30,6 +29,7 @@ $displayTitle = isset($page_title) ? (string)$page_title : (isset($pageTitle) ? 
                 <a href="settings.php">⚙️ <?= __('admin_settings') ?></a>
                 <a href="reports.php">📈 <?= __('admin_reports') ?></a>
                 <a href="admins.php">🛡️ Admins</a>
+                <a href="../index.php" target="_blank" rel="noopener noreferrer">🌐 <?= htmlspecialchars((string)__('view_customer_site')) ?></a>
                 <a href="../logout.php">🚪 <?= __('logout') ?></a>
                 <div class="lang-selector">
                     <form method="GET" action="">
