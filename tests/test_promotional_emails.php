@@ -71,13 +71,19 @@ assertTrue($optedOutUser->canReceivePromotions() === false, "Opted-out user cann
 $container = getServiceContainer();
 $sendUseCase = $container->getSendPromotionalCampaignUseCase();
 
-$template = "Hello {{first_name}} {{last_name}}, we invite you to {{site_title}}!";
+$template = "Hello {{first_name}} {{last_name}}, visit {{site_title}} at {{site_url}}!";
 $rendered = $sendUseCase->renderEmailContent($template, $optedInUser);
 
-assertTrue(str_contains($rendered['text'], 'Hello Taro Yamada, we invite you to'), "Personalization tokens replaced in text");
+assertTrue(str_contains($rendered['text'], 'Hello Taro Yamada, visit'), "Personalization tokens replaced in text");
+assertTrue(str_contains($rendered['text'], 'at http://') || str_contains($rendered['text'], 'at https://'), "{{site_url}} replaced in text");
 assertTrue(str_contains($rendered['text'], 'unsubscribe.php?token=test_token_123'), "Unsubscribe link automatically appended when omitted");
 assertTrue(str_contains($rendered['html'], 'Taro Yamada'), "Personalization tokens rendered in HTML");
+assertTrue(str_contains($rendered['html'], 'href="http://') || str_contains($rendered['html'], 'href="https://'), "Banner and URLs rendered as clickable links in HTML");
 assertTrue(str_contains($rendered['html'], 'Unsubscribe / 配信停止'), "HTML includes unsubscribe footer");
+
+$subjectTemplate = "Special Offer for {{first_name}} from {{site_title}}";
+$personalizedSubject = $sendUseCase->renderSubject($subjectTemplate, $optedInUser);
+assertTrue(str_contains($personalizedSubject, 'Special Offer for Taro from'), "Subject line personalization tokens replaced");
 
 // TEST 4: Campaign Creation and Database Persistence
 $adminId = 1;

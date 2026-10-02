@@ -49,14 +49,8 @@ final class PreviewCampaignUseCase
             }
         }
 
-        // Render subject placeholders
-        $siteTitle = (string)($this->siteConfig['site_title'] ?? "Fidel's Pizza Event");
-        $eventDate = (string)($this->siteConfig['event_date'] ?? 'Upcoming');
-        $subjectPreview = str_replace(
-            ['{{first_name}}', '{{last_name}}', '{{full_name}}', '{{site_title}}', '{{event_date}}'],
-            [$user->getFirstName(), $user->getLastName(), $user->getFullName(), $siteTitle, $eventDate],
-            $subject
-        );
+        // Render subject placeholders using the sender use case for 100% fidelity
+        $subjectPreview = $this->senderUseCase->renderSubject($subject, $user);
 
         $rendered = $this->senderUseCase->renderEmailContent($bodyContent, $user);
 

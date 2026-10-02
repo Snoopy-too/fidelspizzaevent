@@ -203,4 +203,24 @@ final class ServiceContainer
         }
         return $this->resetPasswordUseCase;
     }
+
+    private ?\FidelsPizza\Application\UseCase\SendRegistrationConfirmationUseCase $sendRegistrationConfirmationUseCase = null;
+
+    public function getSendRegistrationConfirmationUseCase(
+        ?\FidelsPizza\Domain\Service\EmailSenderInterface $overrideEmailSender = null
+    ): \FidelsPizza\Application\UseCase\SendRegistrationConfirmationUseCase {
+        if ($overrideEmailSender !== null) {
+            return new \FidelsPizza\Application\UseCase\SendRegistrationConfirmationUseCase(
+                $overrideEmailSender,
+                $this->siteConfig
+            );
+        }
+        if ($this->sendRegistrationConfirmationUseCase === null) {
+            $this->sendRegistrationConfirmationUseCase = new \FidelsPizza\Application\UseCase\SendRegistrationConfirmationUseCase(
+                $this->getEmailSender(),
+                $this->siteConfig
+            );
+        }
+        return $this->sendRegistrationConfirmationUseCase;
+    }
 }

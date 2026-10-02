@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/src/bootstrap.php';
 
 $config = getSiteConfig();
 $error = '';
@@ -53,20 +54,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                     $stmt = $db->prepare("INSERT INTO users (first_name, last_name, email, phone, password_hash, confirmation_token, unsubscribe_token, accepts_marketing) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
                     $stmt->execute([$first_name, $last_name, $email, $phone, $password_hash, $confirmation_token, $unsubscribe_token]);
                     
-                    // Send confirmation email
-                    $template = getEmailTemplate('confirmation_email');
-                    if ($template) {
-                        $confirmation_link = SITE_URL . "/confirm.php?token=" . $confirmation_token;
-                        $placeholders = [
-                            'first_name' => $first_name,
-                            'confirmation_link' => $confirmation_link
-                        ];
-                        
-                        $subject = replacePlaceholders($template['subject'], $placeholders);
-                        $body = replacePlaceholders($template['body'], $placeholders);
-                        
-                        if (sendEmail($email, $subject, $body)) {
-                            $success = __('success_registration');
+                    // Send confirmation email via Clean Architecture UseCase
+                    $container = getServiceContainer();
+                    $sendConfirmationUseCase = $container->getSendRegistrationConfirmationUseCase();
+                    $currentLang = (string)($_SESSION['lang'] ?? 'ja');
+
+                    if ($sendConfirmationUseCase->execute($email, $first_name, $confirmation_token, $currentLang)) {
+                        $success = __('success_registration');
+                    } else {
+                        // Fallback to template if needed
+                        $template = getEmailTemplate('confirmation_email');
+                        if ($template) {
+                            $confirmation_link = SITE_URL . "/confirm.php?token=" . $confirmation_token;
+                            $placeholders = [
+                                'first_name' => $first_name,
+                                'confirmation_link' => $confirmation_link
+                            ];
+                            $subject = replacePlaceholders($template['subject'], $placeholders);
+                            $body = replacePlaceholders($template['body'], $placeholders);
+                            if (sendEmail($email, $subject, $body)) {
+                                $success = __('success_registration');
+                            } else {
+                                $error = __('error_email_send_failed');
+                            }
                         } else {
                             $error = __('error_email_send_failed');
                         }

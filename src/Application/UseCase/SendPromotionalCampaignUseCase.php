@@ -126,12 +126,13 @@ final class SendPromotionalCampaignUseCase
                 }
 
                 $rendered = $this->renderEmailContent($campaign->getBodyContent(), $user);
+                $personalizedSubject = $this->renderSubject($campaign->getSubject(), $user);
 
                 try {
                     $success = $this->emailSender->send(
                         toEmail: $user->getEmail(),
                         toName: $user->getFullName(),
-                        subject: $campaign->getSubject(),
+                        subject: $personalizedSubject,
                         htmlBody: $rendered['html'],
                         textBody: $rendered['text']
                     );
@@ -188,12 +189,64 @@ final class SendPromotionalCampaignUseCase
     }
 
     /**
+     * Resolve the base site URL, honoring configured domain or dynamically resolving if default placeholder is used.
+     */
+    public function resolveBaseUrl(): string
+    {
+        $configured = trim((string)($this->siteConfig['site_url'] ?? ''));
+        if ($configured !== '' && $configured !== 'https://yoursite.com') {
+            return rtrim($configured, '/');
+        }
+
+        $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+        if ($host !== '' && preg_match('/^[a-zA-Z0-9.\-:]+$/', $host)) {
+            $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                || ((int)($_SERVER['SERVER_PORT'] ?? 80) === 443)
+                || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+            $scheme = $isHttps ? 'https' : 'http';
+            $scriptDir = str_replace('\\', '/', dirname((string)($_SERVER['SCRIPT_NAME'] ?? '')));
+            if (str_ends_with($scriptDir, '/admin')) {
+                $scriptDir = substr($scriptDir, 0, -6);
+            }
+            $scriptDir = rtrim($scriptDir, '/');
+            return $scheme . '://' . $host . $scriptDir;
+        }
+
+        return $configured !== '' ? rtrim($configured, '/') : 'http://localhost/fidelspizzaevent';
+    }
+
+    /**
+     * Render subject line with dynamic personalization tokens safely.
+     */
+    public function renderSubject(string $rawSubject, MarketingUser $user): string
+    {
+        $siteTitle = (string)($this->siteConfig['site_title'] ?? "Fidel's Pizza Event");
+        $siteUrl = $this->resolveBaseUrl();
+        $eventDate = (string)($this->siteConfig['event_date'] ?? 'Upcoming');
+        $eventLocation = (string)($this->siteConfig['event_location'] ?? 'Fidel\'s Pizza');
+
+        $tokens = [
+            '{{first_name}}' => $user->getFirstName(),
+            '{{last_name}}' => $user->getLastName(),
+            '{{full_name}}' => $user->getFullName(),
+            '{{email}}' => $user->getEmail(),
+            '{{phone}}' => $user->getPhone() ?? '',
+            '{{site_title}}' => $siteTitle,
+            '{{site_url}}' => $siteUrl,
+            '{{event_date}}' => $eventDate,
+            '{{event_location}}' => $eventLocation,
+        ];
+
+        return str_replace(array_keys($tokens), array_values($tokens), $rawSubject);
+    }
+
+    /**
      * Render message content with dynamic personalization tokens and legal unsubscribe footer.
      * @return array{html: string, text: string}
      */
     public function renderEmailContent(string $rawContent, MarketingUser $user): array
     {
-        $siteUrl = rtrim((string)($this->siteConfig['site_url'] ?? 'http://localhost/fidelspizzaevent'), '/');
+        $siteUrl = $this->resolveBaseUrl();
         $siteTitle = (string)($this->siteConfig['site_title'] ?? "Fidel's Pizza Event");
         $eventDate = (string)($this->siteConfig['event_date'] ?? 'Upcoming');
         $eventLocation = (string)($this->siteConfig['event_location'] ?? 'Fidel\'s Pizza');
@@ -208,6 +261,7 @@ final class SendPromotionalCampaignUseCase
             'email' => $user->getEmail(),
             'phone' => $user->getPhone() ?? '',
             'site_title' => $siteTitle,
+            'site_url' => $siteUrl,
             'event_date' => $eventDate,
             'event_location' => $eventLocation,
             'unsubscribe_link' => $unsubscribeUrl,
@@ -245,7 +299,9 @@ final class SendPromotionalCampaignUseCase
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
         <tr>
             <td style="background-color: #d32f2f; padding: 24px; text-align: center; color: #ffffff;">
-                <h1 style="margin: 0; font-size: 22px; font-weight: bold; letter-spacing: 0.5px;">🍕 {$siteTitle}</h1>
+                <h1 style="margin: 0; font-size: 22px; font-weight: bold; letter-spacing: 0.5px;">
+                    <a href="{$siteUrl}" style="color: #ffffff; text-decoration: none; display: inline-block;" target="_blank" rel="noopener noreferrer">🍕 {$siteTitle}</a>
+                </h1>
             </td>
         </tr>
         <tr>
@@ -255,7 +311,7 @@ final class SendPromotionalCampaignUseCase
         </tr>
         <tr>
             <td style="background-color: #f1f3f5; padding: 18px 24px; text-align: center; font-size: 12px; color: #6c757d; border-top: 1px solid #e9ecef;">
-                <p style="margin: 0 0 6px 0;"><strong>{$siteTitle}</strong> | {$eventLocation}</p>
+                <p style="margin: 0 0 6px 0;"><a href="{$siteUrl}" style="color: #495057; text-decoration: underline;" target="_blank" rel="noopener noreferrer"><strong>{$siteTitle}</strong></a> | {$eventLocation}</p>
                 <p style="margin: 0;">
                     <a href="{$unsubscribeUrl}" style="color: #6c757d; text-decoration: underline;" target="_blank">Unsubscribe / 配信停止</a>
                 </p>

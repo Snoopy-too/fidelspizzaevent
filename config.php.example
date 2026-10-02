@@ -130,12 +130,33 @@ function formatPrice($price) {
 }
 
 function sendEmail($to, $subject, $body, $headers = '') {
+    $cleanTo = str_replace(["\r", "\n"], '', trim($to));
+    $cleanSubject = str_replace(["\r", "\n"], '', trim($subject));
+    $fromEmail = defined('FROM_EMAIL') ? FROM_EMAIL : 'noreply@yoursite.com';
+    $fromName = defined('FROM_NAME') ? FROM_NAME : "Fidel's Pizza Event";
+
     if (!$headers) {
-        $headers = "From: " . FROM_NAME . " <" . FROM_EMAIL . ">\r\n";
-        $headers .= "Reply-To: " . FROM_EMAIL . "\r\n";
+        $encodedSubject = mb_encode_mimeheader($cleanSubject, 'UTF-8', 'B', "\r\n");
+        $encodedFromName = mb_encode_mimeheader($fromName, 'UTF-8', 'B', "\r\n");
+        $fromDomain = 'localhost';
+        if (str_contains($fromEmail, '@')) {
+            $parts = explode('@', $fromEmail);
+            $fromDomain = (string)array_pop($parts);
+        }
+        $messageId = sprintf('<%s.%s@%s>', bin2hex(random_bytes(12)), (string)time(), $fromDomain);
+        $dateHeader = date(DATE_RFC2822);
+
+        $headers = "Date: " . $dateHeader . "\r\n";
+        $headers .= "Message-ID: " . $messageId . "\r\n";
+        $headers .= "MIME-Version: 1.0\r\n";
+        $headers .= "From: " . $encodedFromName . " <" . $fromEmail . ">\r\n";
+        $headers .= "Reply-To: " . $fromEmail . "\r\n";
+        $headers .= "Auto-Submitted: auto-generated\r\n";
         $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+        $headers .= "Content-Transfer-Encoding: 8bit\r\n";
+        return mail($cleanTo, $encodedSubject, $body, $headers, "-f" . $fromEmail);
     }
-    return mail($to, $subject, $body, $headers);
+    return mail($cleanTo, $cleanSubject, $body, $headers, "-f" . $fromEmail);
 }
 
 function getEmailTemplate($template_name) {

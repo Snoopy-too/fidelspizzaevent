@@ -399,6 +399,7 @@ require_once __DIR__ . '/includes/header.php';
                         <span class="tag-badge" onclick="insertTag('{{event_date}}')">{{event_date}}</span>
                         <span class="tag-badge" onclick="insertTag('{{event_location}}')">{{event_location}}</span>
                         <span class="tag-badge" onclick="insertTag('{{site_title}}')">{{site_title}}</span>
+                        <span class="tag-badge" onclick="insertTag('{{site_url}}')">{{site_url}}</span>
                         <span class="tag-badge" onclick="insertTag('{{unsubscribe_link}}')">{{unsubscribe_link}}</span>
                     </div>
                     <small style="color: #666;">Click any tag above to insert it at your current cursor position.</small>

@@ -40,14 +40,26 @@ final class NativePhpEmailSender implements EmailSenderInterface
         $fromHeader = "$encodedFromName <$safeFromEmail>";
         $replyToHeader = $safeFromEmail;
 
-        // 3. Construct multipart/alternative email
+        // 3. RFC 5322 & Deliverability Headers
+        $fromDomain = 'localhost';
+        if (str_contains($safeFromEmail, '@')) {
+            $domainParts = explode('@', $safeFromEmail);
+            $fromDomain = (string)array_pop($domainParts);
+        }
+        $messageId = sprintf('<%s.%s@%s>', bin2hex(random_bytes(12)), (string)time(), $fromDomain);
+        $dateHeader = date(DATE_RFC2822);
+
+        // 4. Construct multipart/alternative email
         $boundary = "=_fidels_boundary_" . md5(uniqid((string)time(), true));
 
         $headers = [
+            "Date: $dateHeader",
+            "Message-ID: $messageId",
             "MIME-Version: 1.0",
             "From: $fromHeader",
             "Reply-To: $replyToHeader",
-            "X-Mailer: FidelsPizza-Promo-Mailer/1.0",
+            "Auto-Submitted: auto-generated",
+            "X-Mailer: FidelsPizza-Mailer/2.0",
             "Content-Type: multipart/alternative; boundary=\"$boundary\""
         ];
         $headersStr = implode("\r\n", $headers);
@@ -73,7 +85,8 @@ final class NativePhpEmailSender implements EmailSenderInterface
 
         $multipartPayload = implode("\r\n", $bodyParts);
 
-        // Native PHP mail invocation
-        return @mail($safeToEmail, $encodedSubject, $multipartPayload, $headersStr);
+        // 5. Native PHP mail invocation with envelope sender flag (-f) for Return-Path SPF/DMARC alignment
+        $additionalParams = "-f" . $safeFromEmail;
+        return @mail($safeToEmail, $encodedSubject, $multipartPayload, $headersStr, $additionalParams);
     }
 }
