@@ -33,15 +33,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $eventDateInput = trim((string)($_POST['event_date'] ?? ''));
         $eventDateValue = $eventDateInput !== '' ? $eventDateInput : null;
 
+        $orderDeadlineInput = trim((string)($_POST['order_deadline'] ?? ''));
+        $orderDeadlineValue = $orderDeadlineInput !== '' ? date('Y-m-d H:i:s', strtotime($orderDeadlineInput)) : null;
+
+        $orderStatusOverrideInput = trim((string)($_POST['order_status_override'] ?? 'auto'));
+        if (!in_array($orderStatusOverrideInput, ['auto', 'force_open', 'force_closed'], true)) {
+            $orderStatusOverrideInput = 'auto';
+        }
+
         $stmt = $db->prepare("
             UPDATE site_config
-            SET site_title = ?, event_location = ?, event_date = ?, registration_code = ?, landing_content = ?, menu_content = ?, admin_email = ?, admin_email_2 = ?
+            SET site_title = ?, event_location = ?, event_date = ?, order_deadline = ?, order_status_override = ?, registration_code = ?, landing_content = ?, menu_content = ?, admin_email = ?, admin_email_2 = ?
             WHERE id = 1
         ");
         $stmt->execute([
             trim((string)($_POST['site_title'] ?? '')),
             trim((string)($_POST['event_location'] ?? '')),
             $eventDateValue,
+            $orderDeadlineValue,
+            $orderStatusOverrideInput,
             trim((string)($_POST['registration_code'] ?? '')),
             (string)($_POST['landing_content'] ?? ''),
             (string)($_POST['menu_content'] ?? ''),
@@ -66,6 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $config['site_title'] = $_POST['site_title'] ?? ($config['site_title'] ?? '');
         $config['event_location'] = $_POST['event_location'] ?? ($config['event_location'] ?? '');
         $config['event_date'] = $_POST['event_date'] ?? ($config['event_date'] ?? '');
+        $config['order_deadline'] = $_POST['order_deadline'] ?? ($config['order_deadline'] ?? '');
+        $config['order_status_override'] = $_POST['order_status_override'] ?? ($config['order_status_override'] ?? 'auto');
         $config['registration_code'] = $_POST['registration_code'] ?? ($config['registration_code'] ?? '');
         $config['landing_content'] = $_POST['landing_content'] ?? ($config['landing_content'] ?? '');
         $config['menu_content'] = $_POST['menu_content'] ?? ($config['menu_content'] ?? '');
@@ -205,6 +217,50 @@ require_once __DIR__ . '/includes/header.php';
 
                 <label for="event_date"><?= htmlspecialchars((string)__('event_date')) ?></label>
                 <input type="date" name="event_date" id="event_date" value="<?= htmlspecialchars((string)($config['event_date'] ?? '')) ?>">
+
+                <!-- ORDER DEADLINE & MASTER SWITCH -->
+                <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; margin: 20px 0;">
+                    <div style="font-weight: bold; font-size: 1.05em; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                        <span>⏳</span> <?= htmlspecialchars((string)__('order_deadline_label')) ?>
+                    </div>
+                    <p style="font-size: 0.88em; color: #475569; margin: 0 0 14px 0;">
+                        <?= htmlspecialchars((string)__('order_deadline_hint')) ?>
+                    </p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px;">
+                        <div>
+                            <label for="order_deadline" style="display: block; font-weight: 600; margin-bottom: 5px; color: #334155;">
+                                ⏰ <?= htmlspecialchars((string)__('order_deadline_label')) ?>
+                            </label>
+                            <?php
+                            $deadlineVal = '';
+                            if (!empty($config['order_deadline'])) {
+                                $dt = strtotime((string)$config['order_deadline']);
+                                if ($dt !== false) {
+                                    $deadlineVal = date('Y-m-d\TH:i', $dt);
+                                }
+                            }
+                            ?>
+                            <input type="datetime-local" name="order_deadline" id="order_deadline" value="<?= htmlspecialchars($deadlineVal) ?>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #ffffff;">
+                        </div>
+                        <div>
+                            <label for="order_status_override" style="display: block; font-weight: 600; margin-bottom: 5px; color: #334155;">
+                                🎛️ <?= htmlspecialchars((string)__('order_status_mode_label')) ?>
+                            </label>
+                            <?php $currentOverride = (string)($config['order_status_override'] ?? 'auto'); ?>
+                            <select name="order_status_override" id="order_status_override" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #ffffff;">
+                                <option value="auto" <?= $currentOverride === 'auto' ? 'selected' : '' ?>>
+                                    ⚡ <?= htmlspecialchars((string)__('order_status_auto')) ?>
+                                </option>
+                                <option value="force_open" <?= $currentOverride === 'force_open' ? 'selected' : '' ?>>
+                                    🟢 <?= htmlspecialchars((string)__('order_status_force_open')) ?>
+                                </option>
+                                <option value="force_closed" <?= $currentOverride === 'force_closed' ? 'selected' : '' ?>>
+                                    🔴 <?= htmlspecialchars((string)__('order_status_force_closed')) ?>
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- PICKUP TIME SLOTS CONFIGURATION -->
                 <div class="pickup-slots-card">

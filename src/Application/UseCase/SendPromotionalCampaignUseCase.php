@@ -224,6 +224,8 @@ final class SendPromotionalCampaignUseCase
         $siteUrl = $this->resolveBaseUrl();
         $eventDate = (string)($this->siteConfig['event_date'] ?? 'Upcoming');
         $eventLocation = (string)($this->siteConfig['event_location'] ?? 'Fidel\'s Pizza');
+        $orderWindow = new \FidelsPizza\Domain\Service\OrderWindowService();
+        $orderDeadline = $orderWindow->getFormattedDeadline($this->siteConfig) ?? 'N/A';
 
         $tokens = [
             '{{first_name}}' => $user->getFirstName(),
@@ -234,6 +236,7 @@ final class SendPromotionalCampaignUseCase
             '{{site_title}}' => $siteTitle,
             '{{site_url}}' => $siteUrl,
             '{{event_date}}' => $eventDate,
+            '{{order_deadline}}' => $orderDeadline,
             '{{event_location}}' => $eventLocation,
         ];
 
@@ -250,6 +253,8 @@ final class SendPromotionalCampaignUseCase
         $siteTitle = (string)($this->siteConfig['site_title'] ?? "Fidel's Pizza Event");
         $eventDate = (string)($this->siteConfig['event_date'] ?? 'Upcoming');
         $eventLocation = (string)($this->siteConfig['event_location'] ?? 'Fidel\'s Pizza');
+        $orderWindow = new \FidelsPizza\Domain\Service\OrderWindowService();
+        $orderDeadline = $orderWindow->getFormattedDeadline($this->siteConfig) ?? 'N/A';
 
         $unsubscribeToken = $user->getUnsubscribeToken() ?? '';
         $unsubscribeUrl = $siteUrl . '/unsubscribe.php?token=' . urlencode($unsubscribeToken);
@@ -263,6 +268,7 @@ final class SendPromotionalCampaignUseCase
             'site_title' => $siteTitle,
             'site_url' => $siteUrl,
             'event_date' => $eventDate,
+            'order_deadline' => $orderDeadline,
             'event_location' => $eventLocation,
             'unsubscribe_link' => $unsubscribeUrl,
         ];

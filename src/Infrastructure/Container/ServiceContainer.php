@@ -223,4 +223,14 @@ final class ServiceContainer
         }
         return $this->sendRegistrationConfirmationUseCase;
     }
+
+    private ?\FidelsPizza\Domain\Service\OrderWindowService $orderWindowService = null;
+
+    public function getOrderWindowService(): \FidelsPizza\Domain\Service\OrderWindowService
+    {
+        if ($this->orderWindowService === null) {
+            $this->orderWindowService = new \FidelsPizza\Domain\Service\OrderWindowService();
+        }
+        return $this->orderWindowService;
+    }
 }

@@ -36,9 +36,18 @@ if ($selectedSlotId === 0 && !empty($availableSlots)) {
     }
 }
 
+$orderWindowService = $container->getOrderWindowService();
+$isOrderingOpen = $orderWindowService->isOrderingOpen($config);
+$orderStatus = $orderWindowService->getOrderingStatus($config);
+$formattedDeadline = $orderWindowService->getFormattedDeadline($config, (string)($_SESSION['lang'] ?? 'ja'));
+$secondsRemaining = $orderWindowService->getSecondsRemaining($config);
+$countdownText = $secondsRemaining !== null ? $orderWindowService->formatRemainingCountdown($secondsRemaining, (string)($_SESSION['lang'] ?? 'ja')) : null;
+
 // Handle order submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
-    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+    if (!$isOrderingOpen) {
+        $error = (string)__('order_closed_error');
+    } elseif (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $error = (string)__('invalid_csrf_token');
     } else {
         $order_items = [];
@@ -314,19 +323,62 @@ h1 {color:#d32f2f; font-size:2.5em; margin-bottom:10px;}
 <?php endif; ?>
 
 <div class="menu-content">
+    <?php if ($formattedDeadline !== null): ?>
+        <div class="deadline-banner" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a; border-radius: 10px; padding: 14px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+            <div style="display: flex; align-items: center; gap: 10px; color: #92400e; font-weight: 600; font-size: 1.02em;">
+                <span style="font-size: 1.4em;">⏰</span>
+                <span><?= htmlspecialchars((string)__('order_deadline_banner')) ?> <strong><?= htmlspecialchars($formattedDeadline) ?></strong></span>
+            </div>
+            <?php if ($isOrderingOpen && $secondsRemaining !== null && $secondsRemaining > 0): ?>
+                <div id="countdownPill" data-seconds="<?= $secondsRemaining ?>" style="background: #d97706; color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.9em; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <span>⏳</span> <span id="countdownTimerText"><?= htmlspecialchars((string)$countdownText) ?></span> <span><?= htmlspecialchars((string)__('time_left')) ?></span>
+                </div>
+            <?php elseif (!$isOrderingOpen): ?>
+                <div style="background: #dc2626; color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.9em; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>🔒</span> <span><?= htmlspecialchars((string)__('orders_closed_title')) ?></span>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
     <?php if (!empty($config['menu_content'])): ?>
         <div style="text-align: center; margin-bottom: 30px; font-size: 1.1em; color: #555;">
             <?= nl2br(htmlspecialchars((string)$config['menu_content'])) ?>
         </div>
     <?php endif; ?>
 
-    <form method="POST" id="orderForm">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+    <?php if (!$isOrderingOpen): ?>
+        <!-- ORDERS CLOSED CARD -->
+        <div class="orders-closed-card" style="background: #ffffff; border-radius: 12px; padding: 40px 25px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin: 10px auto 35px auto; max-width: 650px; border-top: 5px solid #d32f2f;">
+            <div style="font-size: 3.5em; margin-bottom: 12px;">🍕</div>
+            <h2 style="color: #1e293b; margin: 0 0 12px 0; font-size: 1.6em;">
+                <?= htmlspecialchars((string)__('orders_closed_title')) ?>
+            </h2>
+            <p style="color: #475569; font-size: 1.1em; line-height: 1.6; margin: 0 0 20px 0;">
+                <?= htmlspecialchars((string)__('orders_closed_message')) ?>
+            </p>
+            <?php if ($formattedDeadline !== null): ?>
+                <p style="color: #64748b; font-size: 0.92em; margin: 0 0 25px 0;">
+                    <?= htmlspecialchars((string)__('order_deadline_banner')) ?> <strong><?= htmlspecialchars($formattedDeadline) ?></strong>
+                </p>
+            <?php endif; ?>
+            <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                <a href="my_orders.php" class="btn" style="display: inline-block; padding: 12px 28px; background: #d32f2f; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                    📋 <?= htmlspecialchars((string)__('orders_closed_cta')) ?>
+                </a>
+                <a href="index.php" class="btn secondary" style="display: inline-block; padding: 12px 28px; background: #ff9800; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                    🏠 <?= htmlspecialchars((string)__('home')) ?>
+                </a>
+            </div>
+        </div>
+
+        <h3 style="text-align: center; color: #334155; margin: 30px 0 20px 0; font-size: 1.3em;">
+            🍕 <?= htmlspecialchars((string)__('menu_title')) ?>
+        </h3>
 
         <div class="menu-grid">
             <?php foreach ($menu_items as $item): ?>
-            <?php $submittedQty = isset($_POST['quantity_' . $item['id']]) ? max(0, min(15, (int)$_POST['quantity_' . $item['id']])) : 0; ?>
-            <div class="menu-item">
+            <div class="menu-item" style="opacity: 0.9;">
                 <div class="img-container">
                     <?php
                     $image_path = (string)($item['image_path'] ?? '');
@@ -347,72 +399,109 @@ h1 {color:#d32f2f; font-size:2.5em; margin-bottom:10px;}
 
                     <div class="price"><?= htmlspecialchars(formatPrice($item['price'] ?? 0)) ?></div>
                 </div>
-
-                <div class="quantity-section">
-                    <label><?= htmlspecialchars((string)__('quantity')) ?></label>
-                    <div class="quantity-controls">
-                        <button type="button" class="quantity-btn" onclick="changeQuantity(<?= (int)$item['id'] ?>, -1)">-</button>
-                        <input type="number" class="quantity-input" id="quantity_<?= (int)$item['id'] ?>" name="quantity_<?= (int)$item['id'] ?>" value="<?= $submittedQty ?>" min="0" max="15" onchange="updateOrder()">
-                        <button type="button" class="quantity-btn" onclick="changeQuantity(<?= (int)$item['id'] ?>, 1)">+</button>
-                    </div>
-                </div>
             </div>
             <?php endforeach; ?>
         </div>
 
-        <?php if (!empty($availableSlots)): ?>
-        <div class="pickup-time-section" id="pickupTimeSection">
-            <h3><?= htmlspecialchars((string)__('select_pickup_time_title')) ?></h3>
-            <p class="pickup-desc"><?= htmlspecialchars((string)__('select_pickup_time_desc')) ?></p>
-            <div class="pickup-slots-grid">
-                <?php foreach ($availableSlots as $slot): ?>
-                    <?php
-                    $slotId = (int)$slot->getId();
-                    $isFull = $slot->isFull();
-                    $isSelected = !$isFull && ($selectedSlotId === $slotId);
-                    $remPizzas = $slot->getRemainingPizzas();
-                    $remOrders = $slot->getRemainingOrders();
-                    ?>
-                    <label class="pickup-slot-card <?= $isSelected ? 'selected' : '' ?> <?= $isFull ? 'disabled' : '' ?>"
-                           id="slot_card_<?= $slotId ?>"
-                           onclick="selectSlotCard(<?= $slotId ?>)">
-                        <input type="radio"
-                               name="pickup_slot_id"
-                               id="pickup_slot_<?= $slotId ?>"
-                               value="<?= $slotId ?>"
-                               <?= $isSelected ? 'checked' : '' ?>
-                               <?= $isFull ? 'disabled' : '' ?>
-                               onchange="updateOrder()">
-                        <?php if ($slot->getLabel() !== ''): ?>
-                            <span class="slot-card-label"><?= htmlspecialchars($slot->getLabel()) ?></span>
+        <div style="text-align: center; margin-top: 35px;">
+            <a href="my_orders.php" class="btn secondary">📄 <?= htmlspecialchars((string)__('order_history')) ?></a>
+            <a href="index.php" class="btn secondary">← <?= htmlspecialchars((string)__('back_home')) ?></a>
+        </div>
+    <?php else: ?>
+        <form method="POST" id="orderForm">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+
+            <div class="menu-grid">
+                <?php foreach ($menu_items as $item): ?>
+                <?php $submittedQty = isset($_POST['quantity_' . $item['id']]) ? max(0, min(15, (int)$_POST['quantity_' . $item['id']])) : 0; ?>
+                <div class="menu-item">
+                    <div class="img-container">
+                        <?php
+                        $image_path = (string)($item['image_path'] ?? '');
+                        if ($image_path !== '' && file_exists(ROOT_PATH . DIRECTORY_SEPARATOR . $image_path)):
+                        ?>
+                            <img src="<?= htmlspecialchars($image_path) ?>" alt="<?= htmlspecialchars((string)$item['name']) ?>">
+                        <?php else: ?>
+                            <span style="font-size: 3em;">🍕</span>
                         <?php endif; ?>
-                        <span class="slot-card-time"><?= htmlspecialchars($slot->getTimeRange()) ?></span>
-                        <?php if ($isFull): ?>
-                            <span class="slot-card-capacity"><?= htmlspecialchars((string)__('slot_full_badge')) ?></span>
-                        <?php elseif ($remPizzas !== null): ?>
-                            <span class="slot-card-capacity"><?= htmlspecialchars(sprintf((string)__('slot_remaining_pizzas'), $remPizzas)) ?></span>
-                        <?php elseif ($remOrders !== null): ?>
-                            <span class="slot-card-capacity"><?= htmlspecialchars(sprintf((string)__('slot_remaining_orders'), $remOrders)) ?></span>
+                    </div>
+
+                    <div class="menu-item-content">
+                        <h3><?= htmlspecialchars((string)$item['name']) ?></h3>
+
+                        <?php if (!empty($item['description'])): ?>
+                            <div class="description"><?= htmlspecialchars((string)$item['description']) ?></div>
                         <?php endif; ?>
-                    </label>
+
+                        <div class="price"><?= htmlspecialchars(formatPrice($item['price'] ?? 0)) ?></div>
+                    </div>
+
+                    <div class="quantity-section">
+                        <label><?= htmlspecialchars((string)__('quantity')) ?></label>
+                        <div class="quantity-controls">
+                            <button type="button" class="quantity-btn" onclick="changeQuantity(<?= (int)$item['id'] ?>, -1)">-</button>
+                            <input type="number" class="quantity-input" id="quantity_<?= (int)$item['id'] ?>" name="quantity_<?= (int)$item['id'] ?>" value="<?= $submittedQty ?>" min="0" max="15" onchange="updateOrder()">
+                            <button type="button" class="quantity-btn" onclick="changeQuantity(<?= (int)$item['id'] ?>, 1)">+</button>
+                        </div>
+                    </div>
+                </div>
                 <?php endforeach; ?>
             </div>
-        </div>
-        <?php endif; ?>
 
-        <div class="pizza-order-summary" id="orderSummary" style="display: none;">
-            <h3>🛒 <?= htmlspecialchars((string)__('cart_contents')) ?></h3>
-            <div id="orderItems"></div>
-        </div>
+            <?php if (!empty($availableSlots)): ?>
+            <div class="pickup-time-section" id="pickupTimeSection">
+                <h3><?= htmlspecialchars((string)__('select_pickup_time_title')) ?></h3>
+                <p class="pickup-desc"><?= htmlspecialchars((string)__('select_pickup_time_desc')) ?></p>
+                <div class="pickup-slots-grid">
+                    <?php foreach ($availableSlots as $slot): ?>
+                        <?php
+                        $slotId = (int)$slot->getId();
+                        $isFull = $slot->isFull();
+                        $isSelected = !$isFull && ($selectedSlotId === $slotId);
+                        $remPizzas = $slot->getRemainingPizzas();
+                        $remOrders = $slot->getRemainingOrders();
+                        ?>
+                        <label class="pickup-slot-card <?= $isSelected ? 'selected' : '' ?> <?= $isFull ? 'disabled' : '' ?>"
+                               id="slot_card_<?= $slotId ?>"
+                               onclick="selectSlotCard(<?= $slotId ?>)">
+                            <input type="radio"
+                                   name="pickup_slot_id"
+                                   id="pickup_slot_<?= $slotId ?>"
+                                   value="<?= $slotId ?>"
+                                   <?= $isSelected ? 'checked' : '' ?>
+                                   <?= $isFull ? 'disabled' : '' ?>
+                                   onchange="updateOrder()">
+                            <?php if ($slot->getLabel() !== ''): ?>
+                                <span class="slot-card-label"><?= htmlspecialchars($slot->getLabel()) ?></span>
+                            <?php endif; ?>
+                            <span class="slot-card-time"><?= htmlspecialchars($slot->getTimeRange()) ?></span>
+                            <?php if ($isFull): ?>
+                                <span class="slot-card-capacity"><?= htmlspecialchars((string)__('slot_full_badge')) ?></span>
+                            <?php elseif ($remPizzas !== null): ?>
+                                <span class="slot-card-capacity"><?= htmlspecialchars(sprintf((string)__('slot_remaining_pizzas'), $remPizzas)) ?></span>
+                            <?php elseif ($remOrders !== null): ?>
+                                <span class="slot-card-capacity"><?= htmlspecialchars(sprintf((string)__('slot_remaining_orders'), $remOrders)) ?></span>
+                            <?php endif; ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
 
-        <div class="submit-section">
-            <button type="submit" name="submit_order" class="btn" id="submitBtn" style="display: none;">
-                🍕 <?= htmlspecialchars((string)__('submit_order')) ?>
-            </button>
-            <a href="index.php" class="btn secondary">← <?= htmlspecialchars((string)__('back_home')) ?></a>
-            <a href="my_orders.php" class="btn secondary">📄 <?= htmlspecialchars((string)__('order_history')) ?></a>
-        </div>
-    </form>
+            <div class="pizza-order-summary" id="orderSummary" style="display: none;">
+                <h3>🛒 <?= htmlspecialchars((string)__('cart_contents')) ?></h3>
+                <div id="orderItems"></div>
+            </div>
+
+            <div class="submit-section">
+                <button type="submit" name="submit_order" class="btn" id="submitBtn" style="display: none;">
+                    🍕 <?= htmlspecialchars((string)__('submit_order')) ?>
+                </button>
+                <a href="index.php" class="btn secondary">← <?= htmlspecialchars((string)__('back_home')) ?></a>
+                <a href="my_orders.php" class="btn secondary">📄 <?= htmlspecialchars((string)__('order_history')) ?></a>
+            </div>
+        </form>
+    <?php endif; ?>
 </div>
 </div>
 
@@ -517,45 +606,94 @@ function updateOrder() {
 document.addEventListener('DOMContentLoaded', function() {
     Object.keys(menuItems).forEach(itemId => {
         const input = document.getElementById('quantity_' + itemId);
-        input.addEventListener('input', updateOrder);
+        if (input) {
+            input.addEventListener('input', updateOrder);
+        }
     });
     updateOrder();
+
+    // Live countdown ticker
+    const countdownPill = document.getElementById('countdownPill');
+    const timerText = document.getElementById('countdownTimerText');
+    if (countdownPill && timerText) {
+        let seconds = parseInt(countdownPill.getAttribute('data-seconds'), 10);
+        const isJa = '<?= ($_SESSION['lang'] ?? 'ja') ?>' === 'ja';
+
+        function formatTime(s) {
+            if (s <= 0) return isJa ? '締切' : 'Closed';
+            const d = Math.floor(s / 86400);
+            const h = Math.floor((s % 86400) / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+
+            if (isJa) {
+                let res = '';
+                if (d > 0) res += d + '日 ';
+                if (h > 0 || d > 0) res += h + '時間 ';
+                if (m > 0 || h > 0 || d > 0) res += m + '分 ';
+                res += sec + '秒';
+                return res.trim();
+            } else {
+                let res = '';
+                if (d > 0) res += d + (d === 1 ? ' day ' : ' days ');
+                if (h > 0 || d > 0) res += h + (h === 1 ? ' hr ' : ' hrs ');
+                if (m > 0 || h > 0 || d > 0) res += m + ' min ';
+                res += sec + 's';
+                return res.trim();
+            }
+        }
+
+        const interval = setInterval(function() {
+            seconds--;
+            if (seconds <= 0) {
+                clearInterval(interval);
+                timerText.textContent = isJa ? '締切終了' : 'Closed';
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                timerText.textContent = formatTime(seconds);
+            }
+        }, 1000);
+    }
 });
 
-document.getElementById('orderForm').addEventListener('submit', function(e) {
-    let totalPizzas = 0;
-    Object.keys(menuItems).forEach(itemId => {
-        const quantity = parseInt(document.getElementById('quantity_' + itemId).value, 10) || 0;
-        if (quantity > 0) {
-            totalPizzas += quantity;
+const orderFormEl = document.getElementById('orderForm');
+if (orderFormEl) {
+    orderFormEl.addEventListener('submit', function(e) {
+        let totalPizzas = 0;
+        Object.keys(menuItems).forEach(itemId => {
+            const el = document.getElementById('quantity_' + itemId);
+            const quantity = el ? (parseInt(el.value, 10) || 0) : 0;
+            if (quantity > 0) {
+                totalPizzas += quantity;
+            }
+        });
+
+        if (totalPizzas === 0) {
+            e.preventDefault();
+            alert('注文するにはピザを1つ以上選択してください。');
+            return;
+        }
+
+        const slotRadios = document.querySelectorAll('input[name="pickup_slot_id"]');
+        if (slotRadios.length > 0) {
+            const selectedSlot = getSelectedSlot();
+            if (!selectedSlot) {
+                e.preventDefault();
+                alert('<?= htmlspecialchars((string)__('pickup_time_required'), ENT_QUOTES) ?>');
+                return;
+            }
+            if (selectedSlot.remaining_pizzas !== null && totalPizzas > selectedSlot.remaining_pizzas) {
+                e.preventDefault();
+                alert(
+                    '<?= htmlspecialchars((string)__('slot_exceeds_remaining_pizzas'), ENT_QUOTES) ?>'
+                        .replace('%d', totalPizzas)
+                        .replace('%d', selectedSlot.remaining_pizzas)
+                );
+                return;
+            }
         }
     });
-
-    if (totalPizzas === 0) {
-        e.preventDefault();
-        alert('注文するにはピザを1つ以上選択してください。');
-        return;
-    }
-
-    const slotRadios = document.querySelectorAll('input[name="pickup_slot_id"]');
-    if (slotRadios.length > 0) {
-        const selectedSlot = getSelectedSlot();
-        if (!selectedSlot) {
-            e.preventDefault();
-            alert('<?= htmlspecialchars((string)__('pickup_time_required'), ENT_QUOTES) ?>');
-            return;
-        }
-        if (selectedSlot.remaining_pizzas !== null && totalPizzas > selectedSlot.remaining_pizzas) {
-            e.preventDefault();
-            alert(
-                '<?= htmlspecialchars((string)__('slot_exceeds_remaining_pizzas'), ENT_QUOTES) ?>'
-                    .replace('%d', totalPizzas)
-                    .replace('%d', selectedSlot.remaining_pizzas)
-            );
-            return;
-        }
-    }
-});
+}
 </script>
 </body>
 </html>

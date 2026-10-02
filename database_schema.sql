@@ -167,6 +167,8 @@ CREATE TABLE `site_config` (
   `site_title` varchar(255) DEFAULT 'Fidel''s Pizza Event',
   `event_location` text,
   `event_date` date DEFAULT NULL,
+  `order_deadline` datetime DEFAULT NULL,
+  `order_status_override` enum('auto','force_open','force_closed') NOT NULL DEFAULT 'auto',
   `registration_code` varchar(4) DEFAULT NULL,
   `landing_content` text,
   `landing_images` text,

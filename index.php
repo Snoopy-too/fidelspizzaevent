@@ -1,7 +1,15 @@
 <?php
 require_once 'config.php';
+require_once __DIR__ . '/src/bootstrap.php';
 
 $config = getSiteConfig();
+$container = getServiceContainer();
+$orderWindowService = $container->getOrderWindowService();
+$isOrderingOpen = $orderWindowService->isOrderingOpen($config);
+$formattedDeadline = $orderWindowService->getFormattedDeadline($config, (string)($_SESSION['lang'] ?? 'ja'));
+$secondsRemaining = $orderWindowService->getSecondsRemaining($config);
+$countdownText = $secondsRemaining !== null ? $orderWindowService->formatRemainingCountdown($secondsRemaining, (string)($_SESSION['lang'] ?? 'ja')) : null;
+
 $landing_images = json_decode($config['landing_images'] ?? '[]', true) ?: [];
 ?>
 <!DOCTYPE html>
@@ -219,7 +227,7 @@ $landing_images = json_decode($config['landing_images'] ?? '[]', true) ?: [];
             <div class="pizza-icon">🍕</div>
             <h1><?= htmlspecialchars($config['site_title'] ?? __('site_title')) ?></h1>
             
-            <?php if (!empty($config['event_location']) || !empty($config['event_date'])): ?>
+            <?php if (!empty($config['event_location']) || !empty($config['event_date']) || !empty($formattedDeadline)): ?>
             <div class="event-details">
                 <?php if (!empty($config['event_location'])): ?>
                 <h3>📍 <?= __('location_label') ?></h3>
@@ -229,6 +237,22 @@ $landing_images = json_decode($config['landing_images'] ?? '[]', true) ?: [];
                 <?php if (!empty($config['event_date'])): ?>
                 <h3>📅 <?= __('date_label') ?></h3>
                 <p><?= date('Y年n月j日', strtotime($config['event_date'])) ?></p>
+                <?php endif; ?>
+
+                <?php if (!empty($formattedDeadline)): ?>
+                <h3>⏰ <?= __('order_deadline_banner') ?></h3>
+                <p>
+                    <?= htmlspecialchars($formattedDeadline) ?>
+                    <?php if (!$isOrderingOpen): ?>
+                        <span style="display: inline-block; background: #e53e3e; color: #fff; font-size: 0.78em; padding: 2px 8px; border-radius: 12px; margin-left: 6px; font-weight: bold;">
+                            <?= __('orders_closed_title') ?>
+                        </span>
+                    <?php elseif ($secondsRemaining !== null && $secondsRemaining > 0): ?>
+                        <span style="display: inline-block; background: #d97706; color: #fff; font-size: 0.78em; padding: 2px 8px; border-radius: 12px; margin-left: 6px; font-weight: bold;">
+                            ⏳ <?= htmlspecialchars((string)$countdownText) ?> <?= __('time_left') ?>
+                        </span>
+                    <?php endif; ?>
+                </p>
                 <?php endif; ?>
             </div>
             <?php endif; ?>
@@ -262,12 +286,23 @@ $landing_images = json_decode($config['landing_images'] ?? '[]', true) ?: [];
                     <a href="admin/dashboard.php" class="btn"><?= __('admin_dashboard') ?></a>
                     <a href="menu.php" class="btn secondary"><?= __('view_menu') ?></a>
                 <?php else: ?>
-                    <a href="menu.php" class="btn"><?= __('order_now') ?></a>
+                    <?php if ($isOrderingOpen): ?>
+                        <a href="menu.php" class="btn"><?= __('order_now') ?></a>
+                        <a href="my_orders.php" class="btn secondary"><?= __('order_history') ?></a>
+                    <?php else: ?>
+                        <a href="my_orders.php" class="btn" style="background: #d32f2f;"><?= __('orders_closed_cta') ?></a>
+                        <a href="menu.php" class="btn secondary"><?= __('view_menu') ?></a>
+                    <?php endif; ?>
                     <a href="logout.php" class="btn secondary"><?= __('logout') ?></a>
                 <?php endif; ?>
             <?php else: ?>
-                <a href="register.php" class="btn"><?= __('register_event') ?></a>
-                <a href="login.php" class="btn secondary"><?= __('login') ?></a>
+                <?php if ($isOrderingOpen): ?>
+                    <a href="register.php" class="btn"><?= __('register_event') ?></a>
+                    <a href="login.php" class="btn secondary"><?= __('login') ?></a>
+                <?php else: ?>
+                    <a href="login.php" class="btn"><?= __('login') ?></a>
+                    <a href="menu.php" class="btn secondary"><?= __('view_menu') ?></a>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
         

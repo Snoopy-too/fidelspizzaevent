@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/helpers.php';
 
+// Set application timezone (Japan Standard Time)
+date_default_timezone_set('Asia/Tokyo');
+
 // config.php.example - Database and application configuration template
 //
 // INSTRUCTIONS:

@@ -397,6 +397,7 @@ require_once __DIR__ . '/includes/header.php';
                         <span class="tag-badge" onclick="insertTag('{{full_name}}')">{{full_name}}</span>
                         <span class="tag-badge" onclick="insertTag('{{email}}')">{{email}}</span>
                         <span class="tag-badge" onclick="insertTag('{{event_date}}')">{{event_date}}</span>
+                        <span class="tag-badge" onclick="insertTag('{{order_deadline}}')">{{order_deadline}}</span>
                         <span class="tag-badge" onclick="insertTag('{{event_location}}')">{{event_location}}</span>
                         <span class="tag-badge" onclick="insertTag('{{site_title}}')">{{site_title}}</span>
                         <span class="tag-badge" onclick="insertTag('{{site_url}}')">{{site_url}}</span>
