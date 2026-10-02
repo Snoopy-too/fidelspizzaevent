@@ -13,6 +13,20 @@ $manageSlotsUseCase = $container->getManagePickupTimeSlotsUseCase();
 // Ensure admin_email_2 column and cancellation templates exist before any transaction
 $container->getSendOrderNotificationUseCase();
 
+// Ensure order_deadline and order_status_override columns exist in site_config (self-healing migration)
+try {
+    $colCheck1 = $db->query("SHOW COLUMNS FROM `site_config` LIKE 'order_deadline'");
+    if ($colCheck1 !== false && $colCheck1->rowCount() === 0) {
+        $db->exec("ALTER TABLE `site_config` ADD COLUMN `order_deadline` DATETIME NULL DEFAULT NULL AFTER `event_date`");
+    }
+    $colCheck2 = $db->query("SHOW COLUMNS FROM `site_config` LIKE 'order_status_override'");
+    if ($colCheck2 !== false && $colCheck2->rowCount() === 0) {
+        $db->exec("ALTER TABLE `site_config` ADD COLUMN `order_status_override` ENUM('auto', 'force_open', 'force_closed') NOT NULL DEFAULT 'auto' AFTER `order_deadline`");
+    }
+} catch (\Throwable) {
+    // Continue if already handled
+}
+
 // Fetch current config
 $stmt = $db->prepare("SELECT * FROM site_config WHERE id = 1");
 $stmt->execute();
