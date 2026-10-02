@@ -286,10 +286,6 @@ input[type=number] { width:65px; padding:6px; border-radius: 5px; border: 1px so
                         <span class="slot-card-time"><?= htmlspecialchars($slot->getTimeRange()) ?></span>
                         <?php if ($isFull): ?>
                             <span class="slot-card-capacity"><?= htmlspecialchars((string)__('slot_full_badge')) ?></span>
-                        <?php elseif ($remPizzas !== null): ?>
-                            <span class="slot-card-capacity"><?= htmlspecialchars(sprintf((string)__('slot_remaining_pizzas'), $remPizzas)) ?></span>
-                        <?php elseif ($remOrders !== null): ?>
-                            <span class="slot-card-capacity"><?= htmlspecialchars(sprintf((string)__('slot_remaining_orders'), $remOrders)) ?></span>
                         <?php endif; ?>
                     </label>
                 <?php endforeach; ?>

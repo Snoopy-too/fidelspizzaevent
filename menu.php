@@ -477,10 +477,6 @@ h1 {color:#d32f2f; font-size:2.5em; margin-bottom:10px;}
                             <span class="slot-card-time"><?= htmlspecialchars($slot->getTimeRange()) ?></span>
                             <?php if ($isFull): ?>
                                 <span class="slot-card-capacity"><?= htmlspecialchars((string)__('slot_full_badge')) ?></span>
-                            <?php elseif ($remPizzas !== null): ?>
-                                <span class="slot-card-capacity"><?= htmlspecialchars(sprintf((string)__('slot_remaining_pizzas'), $remPizzas)) ?></span>
-                            <?php elseif ($remOrders !== null): ?>
-                                <span class="slot-card-capacity"><?= htmlspecialchars(sprintf((string)__('slot_remaining_orders'), $remOrders)) ?></span>
                             <?php endif; ?>
                         </label>
                     <?php endforeach; ?>
