@@ -149,14 +149,29 @@
             rowsData.push(rowCells);
         });
 
+        function getColumnWidth(colTitle, totalCols) {
+            if (/number|番号/i.test(colTitle)) return totalCols > 5 ? '13%' : '18%';
+            if (/customer|顧客/i.test(colTitle)) return totalCols > 5 ? '19%' : '26%';
+            if (/note|メモ/i.test(colTitle)) return '9%';
+            if (/item|商品/i.test(colTitle)) return '25%';
+            if (/amount|金額|total/i.test(colTitle)) return totalCols > 5 ? '10%' : '16%';
+            if (/pickup|受取/i.test(colTitle)) return '15%';
+            if (/status|ステータス/i.test(colTitle)) return '9%';
+            if (/date|日付|日時/i.test(colTitle)) return '18%';
+            return `${(100 / totalCols).toFixed(1)}%`;
+        }
+
         // Build temporary export container
         const exportContainer = document.createElement('div');
         exportContainer.className = 'pdf-export-wrapper';
-        exportContainer.style.width = isLandscape ? '1060px' : '750px';
+        exportContainer.style.width = '100%';
+        exportContainer.style.maxWidth = '100%';
         exportContainer.style.background = '#ffffff';
         exportContainer.style.color = '#2c3e50';
-        exportContainer.style.padding = isLandscape ? '20px 24px' : '16px 18px';
+        exportContainer.style.padding = '0';
+        exportContainer.style.margin = '0';
         exportContainer.style.boxSizing = 'border-box';
+        exportContainer.style.overflow = 'hidden';
         exportContainer.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif';
 
         const timestampFormatted = formatTimestamp(now);
@@ -167,17 +182,18 @@
             filterHtml = `<div><strong>${escapeHtml(labelFilters)}:</strong> ${escapeHtml(filterInfo)}</div>`;
         }
 
-        const thPadding = isLandscape ? '7px 6px' : '6px 4px';
-        const thFontSize = isLandscape ? '10px' : '9px';
-        const tdPadding = isLandscape ? '6px 6px' : '5px 4px';
-        const tdFontSize = isLandscape ? '9.5px' : '8.5px';
+        const thPadding = isLandscape ? '6px 5px' : '5px 3px';
+        const thFontSize = isLandscape ? '9.5px' : '8px';
+        const tdPadding = isLandscape ? '5px 5px' : '4px 3px';
+        const tdFontSize = isLandscape ? '9px' : '7.5px';
 
         let tableHeaderHtml = '<tr>';
         includedCols.forEach(col => {
             const isAmount = /amount|金額|total/i.test(col.title);
             const isStatus = /status|ステータス/i.test(col.title);
             const align = isAmount ? 'right' : (isStatus ? 'center' : 'left');
-            tableHeaderHtml += `<th style="text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: #2c3e50; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; white-space: nowrap;">${escapeHtml(col.title)}</th>`;
+            const colWidth = getColumnWidth(col.title, includedCols.length);
+            tableHeaderHtml += `<th style="width: ${colWidth}; text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: #2c3e50; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; box-sizing: border-box; word-break: break-word;">${escapeHtml(col.title)}</th>`;
         });
         tableHeaderHtml += '</tr>';
 
@@ -185,10 +201,12 @@
         rowsData.forEach((row, rowIdx) => {
             const bg = rowIdx % 2 === 0 ? '#ffffff' : '#f8f9fa';
             tableBodyHtml += `<tr style="background-color: ${bg}; page-break-inside: avoid;">`;
-            row.forEach(cell => {
+            row.forEach((cell, cellIdx) => {
+                const colTitle = includedCols[cellIdx] ? includedCols[cellIdx].title : '';
+                const colWidth = getColumnWidth(colTitle, includedCols.length);
                 const align = cell.isAmount ? 'right' : (cell.isStatus ? 'center' : 'left');
                 const weight = cell.isOrderNum ? 'font-weight: 600;' : '';
-                tableBodyHtml += `<td style="text-align: ${align}; ${weight} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; vertical-align: top; word-break: break-word; line-height: 1.35;">${cell.content}</td>`;
+                tableBodyHtml += `<td style="width: ${colWidth}; text-align: ${align}; ${weight} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; vertical-align: top; word-break: break-word; overflow-wrap: break-word; line-height: 1.35; box-sizing: border-box;">${cell.content}</td>`;
             });
             tableBodyHtml += '</tr>';
         });
@@ -197,9 +215,9 @@
             <style>
                 .pdf-status-badge {
                     display: inline-block;
-                    padding: 2px ${isLandscape ? '6px' : '4px'};
-                    border-radius: 4px;
-                    font-size: ${isLandscape ? '8.5px' : '8px'};
+                    padding: 1px ${isLandscape ? '5px' : '3px'};
+                    border-radius: 3px;
+                    font-size: ${isLandscape ? '8px' : '7px'};
                     font-weight: bold;
                     text-transform: uppercase;
                     text-align: center;
@@ -213,18 +231,18 @@
                 .pdf-status-cancelled { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
                 .pdf-status-archived { background-color: #ececec; color: #444444; border: 1px solid #dddddd; }
             </style>
-            <div style="border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div style="border-bottom: 2px solid #2c3e50; padding-bottom: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; width: 100%; box-sizing: border-box;">
                 <div>
-                    <h1 style="margin: 0 0 4px 0; font-size: 18px; color: #2c3e50; font-weight: bold;">🍕 ${escapeHtml(siteTitle)}</h1>
-                    <div style="font-size: 14px; font-weight: bold; color: #34495e;">${escapeHtml(reportTitle)}</div>
+                    <h1 style="margin: 0 0 3px 0; font-size: 16px; color: #2c3e50; font-weight: bold;">🍕 ${escapeHtml(siteTitle)}</h1>
+                    <div style="font-size: 13px; font-weight: bold; color: #34495e;">${escapeHtml(reportTitle)}</div>
                 </div>
-                <div style="text-align: right; font-size: 10px; color: #555;">
+                <div style="text-align: right; font-size: 9px; color: #555; white-space: nowrap; line-height: 1.4;">
                     <div><strong>${escapeHtml(labelGeneratedAt)}:</strong> ${escapeHtml(timestampFormatted)}</div>
                     <div><strong>${escapeHtml(labelTotalRecords)}:</strong> ${escapeHtml(recordCountText)}</div>
                 </div>
             </div>
-            ${filterHtml ? `<div style="font-size: 10px; color: #555; margin-bottom: 10px; padding: 6px 10px; background: #edf2f7; border-radius: 4px;">${filterHtml}</div>` : ''}
-            <table style="width: 100%; border-collapse: collapse; margin-top: 6px;">
+            ${filterHtml ? `<div style="font-size: 9px; color: #555; margin-bottom: 8px; padding: 5px 8px; background: #edf2f7; border-radius: 4px; width: 100%; box-sizing: border-box; word-break: break-word;">${filterHtml}</div>` : ''}
+            <table style="width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 4px; box-sizing: border-box;">
                 <thead>
                     ${tableHeaderHtml}
                 </thead>
@@ -232,14 +250,14 @@
                     ${tableBodyHtml}
                 </tbody>
             </table>
-            <div style="margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #888; display: flex; justify-content: space-between;">
+            <div style="margin-top: 10px; padding-top: 6px; border-top: 1px solid #e2e8f0; font-size: 8px; color: #888; display: flex; justify-content: space-between; width: 100%; box-sizing: border-box;">
                 <span>${escapeHtml(siteTitle)} &bull; ${escapeHtml(reportTitle)}</span>
-                <span>${escapeHtml(timestampFormatted)}</span>
+                <span style="white-space: nowrap;">${escapeHtml(timestampFormatted)}</span>
             </div>
         `;
 
         const pdfOptions = {
-            margin: [8, 8, 8, 8],
+            margin: [7, 6, 7, 6],
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: {
