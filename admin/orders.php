@@ -38,6 +38,20 @@ function formatAdminPickupDisplay(?string $pickupDatetime, ?int $slotId, array $
     return date('Y/m/d', $ts) . ' ' . $timeRange;
 }
 
+function getOrdersSortUrl(string $column, string $activeSort, string $activeOrder, string $status, string $search): string {
+    $nextOrder = ($activeSort === $column && $activeOrder === 'ASC') ? 'DESC' : 'ASC';
+    if ($column === 'pickup_time' && $activeSort !== 'pickup_time') {
+        $nextOrder = 'ASC';
+    }
+    $query = [
+        'status' => $status,
+        'search' => $search,
+        'sort'   => $column,
+        'order'  => $nextOrder,
+    ];
+    return 'orders.php?' . http_build_query(array_filter($query, static fn($v) => $v !== ''));
+}
+
 // Handle POST actions (status update / bulk actions)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCsrfToken((string)($_POST['csrf_token'] ?? ''))) {
@@ -87,9 +101,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Filtering and sorting (default to 'pending' when visiting without a status parameter)
 $filter_status = isset($_GET['status']) ? (string)$_GET['status'] : 'pending';
-$sort_by = (string)($_GET['sort'] ?? 'created_at');
-$sort_order = strtoupper((string)($_GET['order'] ?? 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
 $search = (string)($_GET['search'] ?? '');
+
+$raw_sort = (string)($_GET['sort'] ?? 'created_at');
+$raw_order = isset($_GET['order']) && in_array(strtoupper((string)$_GET['order']), ['ASC', 'DESC'], true)
+    ? strtoupper((string)$_GET['order'])
+    : null;
+
+if ($raw_sort === 'pickup_time_desc') {
+    $sort_by = 'pickup_time';
+    $sort_order = 'DESC';
+} elseif ($raw_sort === 'pickup_time_asc') {
+    $sort_by = 'pickup_time';
+    $sort_order = 'ASC';
+} elseif ($raw_sort === 'pickup_time') {
+    $sort_by = 'pickup_time';
+    $sort_order = $raw_order ?? 'ASC';
+} else {
+    $valid_columns = ['created_at', 'order_number', 'total_amount', 'status', 'first_name'];
+    $sort_by = in_array($raw_sort, $valid_columns, true) ? $raw_sort : 'created_at';
+    $sort_order = $raw_order ?? 'DESC';
+}
 
 // Build query
 $where_conditions = [];
@@ -108,7 +140,6 @@ if ($search !== '') {
 
 $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
 
-// Valid sort columns and their table aliases
 $valid_sorts = [
     'created_at'   => 'o.created_at',
     'order_number' => 'o.order_number',
@@ -118,7 +149,14 @@ $valid_sorts = [
     'pickup_time'  => 'o.pickup_time'
 ];
 
-$sort_by_column = $valid_sorts[$sort_by] ?? 'o.created_at';
+$orderByClause = match ($sort_by) {
+    'pickup_time'  => "CASE WHEN o.pickup_time IS NULL THEN 1 ELSE 0 END, o.pickup_time $sort_order, o.id ASC",
+    'first_name'   => "u.first_name $sort_order, u.last_name $sort_order, o.id DESC",
+    'total_amount' => "o.total_amount $sort_order, o.id DESC",
+    'status'       => "o.status $sort_order, o.created_at DESC",
+    'order_number' => "o.order_number $sort_order",
+    default        => "o.created_at $sort_order, o.id $sort_order",
+};
 
 // Get pick-up time orders summary (pending orders only)
 $stmt = $db->query("
@@ -156,7 +194,7 @@ $stmt = $db->prepare("
     LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
     $where_clause
     GROUP BY o.id
-    ORDER BY $sort_by_column $sort_order
+    ORDER BY $orderByClause
 ");
 $stmt->execute($params);
 $orders = $stmt->fetchAll();
@@ -176,7 +214,9 @@ if ($filter_status !== '') {
 if ($search !== '') {
     $activeFilterParts[] = __('search') . ': "' . $search . '"';
 }
-if (isset($valid_sorts[$sort_by])) {
+if ($sort_by === 'pickup_time') {
+    $activeFilterParts[] = __('sort_by') . ': ' . ($sort_order === 'ASC' ? __('sort_pickup_time_asc') : __('sort_pickup_time_desc'));
+} elseif (isset($valid_sorts[$sort_by])) {
     $activeFilterParts[] = __('sort_by') . ': ' . __('sort_' . $sort_by) . ' (' . ($sort_order === 'ASC' ? __('sort_asc') : __('sort_desc')) . ')';
 }
 $activeFilterSummary = implode(' | ', $activeFilterParts);
@@ -225,8 +265,26 @@ require_once __DIR__ . '/includes/header.php';
             </table>
         </div>
 
+        <style>
+            .table-sort-link {
+                color: #ecf0f1 !important;
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .table-sort-link:hover {
+                text-decoration: underline;
+                color: #3498db !important;
+            }
+            .table-sort-link .sort-arrow {
+                font-size: 0.85em;
+                color: #f39c12;
+            }
+        </style>
+
         <!-- FILTERS & SEARCH -->
-        <form method="get" class="controls">
+        <form method="get" class="controls" id="orderFilterForm">
             <div class="form-group">
                 <label><?= htmlspecialchars((string)__('status')) ?></label>
                 <select name="status" onchange="this.form.submit()">
@@ -242,15 +300,19 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="form-group">
                 <label><?= htmlspecialchars((string)__('sort_by')) ?></label>
-                <select name="sort" onchange="this.form.submit()">
-                    <?php foreach ($valid_sorts as $key => $col): ?>
-                        <option value="<?= htmlspecialchars($key) ?>" <?= $sort_by === $key ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_' . $key)) ?></option>
-                    <?php endforeach; ?>
+                <select name="sort" id="sortSelect" onchange="handleSortSelectChange(this)">
+                    <option value="created_at" <?= $sort_by === 'created_at' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_created_at')) ?></option>
+                    <option value="pickup_time" <?= $sort_by === 'pickup_time' && $sort_order === 'ASC' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_pickup_time_asc')) ?></option>
+                    <option value="pickup_time_desc" <?= $sort_by === 'pickup_time' && $sort_order === 'DESC' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_pickup_time_desc')) ?></option>
+                    <option value="order_number" <?= $sort_by === 'order_number' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_order_number')) ?></option>
+                    <option value="total_amount" <?= $sort_by === 'total_amount' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_total_amount')) ?></option>
+                    <option value="status" <?= $sort_by === 'status' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_status')) ?></option>
+                    <option value="first_name" <?= $sort_by === 'first_name' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_first_name')) ?></option>
                 </select>
             </div>
             <div class="form-group">
                 <label><?= htmlspecialchars((string)__('order_direction')) ?></label>
-                <select name="order" onchange="this.form.submit()">
+                <select name="order" id="orderSelect" onchange="this.form.submit()">
                     <option value="ASC" <?= $sort_order === 'ASC' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_asc')) ?></option>
                     <option value="DESC" <?= $sort_order === 'DESC' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('sort_desc')) ?></option>
                 </select>
@@ -299,13 +361,13 @@ require_once __DIR__ . '/includes/header.php';
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
-                            <th><?= htmlspecialchars((string)__('order_number')) ?></th>
-                            <th><?= htmlspecialchars((string)__('customer')) ?></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('order_number', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('order_number')) ?>"><?= htmlspecialchars((string)__('order_number')) ?><?= $sort_by === 'order_number' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('first_name', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('customer')) ?>"><?= htmlspecialchars((string)__('customer')) ?><?= $sort_by === 'first_name' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
                             <th><?= htmlspecialchars((string)__('notes')) ?></th>
                             <th><?= htmlspecialchars((string)__('items')) ?></th>
-                            <th><?= htmlspecialchars((string)__('total_amount')) ?></th>
-                            <th><?= htmlspecialchars((string)__('pickup_time')) ?></th>
-                            <th><?= htmlspecialchars((string)__('status')) ?></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('total_amount', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('total_amount')) ?>"><?= htmlspecialchars((string)__('total_amount')) ?><?= $sort_by === 'total_amount' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('pickup_time', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('pickup_time')) ?>"><?= htmlspecialchars((string)__('pickup_time')) ?><?= $sort_by === 'pickup_time' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('status', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('status')) ?>"><?= htmlspecialchars((string)__('status')) ?><?= $sort_by === 'status' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
                             <th><?= htmlspecialchars((string)__('actions')) ?></th>
                         </tr>
                     </thead>
@@ -329,7 +391,7 @@ require_once __DIR__ . '/includes/header.php';
                                     <td><?= htmlspecialchars(formatAdminPickupDisplay(isset($order['pickup_time']) ? (string)$order['pickup_time'] : null, isset($order['pickup_slot_id']) ? (int)$order['pickup_slot_id'] : null, $slotsById, $slotsByStartTime)) ?></td>
                                     <td>
                                         <form method="post" style="display:inline;">
-                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                             <input type="hidden" name="order_id" value="<?= (int)$order['id'] ?>">
                                             <select name="status" class="status-select" onchange="this.form.submit()">
                                                 <?php foreach (['pending','confirmed','preparing','ready','completed','cancelled'] as $status): ?>
@@ -354,6 +416,17 @@ require_once __DIR__ . '/includes/header.php';
     function toggleAll(source) {
         const checkboxes = document.querySelectorAll('input[name="selected_orders[]"]');
         checkboxes.forEach(checkbox => checkbox.checked = source.checked);
+    }
+
+    function handleSortSelectChange(select) {
+        const orderSelect = document.getElementById('orderSelect');
+        if (select.value === 'pickup_time_desc') {
+            select.value = 'pickup_time';
+            if (orderSelect) orderSelect.value = 'DESC';
+        } else if (select.value === 'pickup_time') {
+            if (orderSelect) orderSelect.value = 'ASC';
+        }
+        select.form.submit();
     }
     </script>
     <script src="js/html2pdf.bundle.min.js"></script>

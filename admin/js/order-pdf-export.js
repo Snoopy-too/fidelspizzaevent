@@ -113,7 +113,7 @@
 
             includedCols.push({
                 index: idx,
-                title: th.textContent.trim()
+                title: th.getAttribute('data-pdf-title') || th.textContent.replace(/[▲▼]/g, '').trim()
             });
         });
 
