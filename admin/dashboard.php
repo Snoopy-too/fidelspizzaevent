@@ -38,15 +38,6 @@ $stmt = $db->query("
 ");
 $current_orders = $stmt->fetchAll();
 
-// Orders by status
-$stmt = $db->query("
-    SELECT status, COUNT(*) as count 
-    FROM orders 
-    GROUP BY status 
-    ORDER BY count DESC
-");
-$orders_by_status = $stmt->fetchAll();
-
 // Popular menu items (pending orders only)
 $stmt = $db->query("
     SELECT mi.name, SUM(oi.quantity) as total_quantity 
@@ -98,23 +89,6 @@ require_once __DIR__ . '/includes/header.php';
             <a href="settings.php" class="admin-menu-item"><span class="icon">⚙️</span><span class="title"><?= __('site_settings') ?></span></a>
             <a href="reports.php" class="admin-menu-item"><span class="icon">📊</span><span class="title"><?= __('admin_reports') ?></span></a>
         </div>
-        
-        <!-- Orders by Status -->
-        <?php if (!empty($orders_by_status)): ?>
-        <div class="section">
-            <h2><?= __('orders_by_status') ?></h2>
-            <?php foreach ($orders_by_status as $status): ?>
-            <div class="item-stat">
-                <span>
-                    <span class="status-badge status-<?= htmlspecialchars($status['status']) ?>">
-                        <?= translateStatus($status['status']) ?>
-                    </span>
-                </span>
-                <span><strong><?= number_format((float)$status['count']) ?> <?= __('quantity') ?></strong></span>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
         
         <!-- Popular Items -->
         <?php if (!empty($popular_items)): ?>
