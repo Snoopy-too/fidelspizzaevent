@@ -27,7 +27,7 @@
     /**
      * Inspect a table cell and extract clean, printable HTML representation.
      */
-    function extractCellContent(cell) {
+    function extractCellContent(cell, isLandscape) {
         // If cell contains a status <select>, extract the selected option text and value
         const select = cell.querySelector('select[name="status"], select.status-select');
         if (select) {
@@ -49,14 +49,15 @@
 
         // If cell contains customer name + email (<br><small>email</small>)
         const small = cell.querySelector('small');
-        if (small) {
-            // Clone and separate
+        if (small && (cell.querySelector('br') || small.textContent.includes('@'))) {
             const clone = cell.cloneNode(true);
             const cloneSmall = clone.querySelector('small');
             const email = cloneSmall ? cloneSmall.textContent.trim() : '';
             if (cloneSmall) cloneSmall.remove();
             const name = clone.textContent.trim();
-            return `<div style="font-weight: 600; color: #2c3e50;">${escapeHtml(name)}</div><div style="font-size: 8.5px; color: #7f8c8d;">${escapeHtml(email)}</div>`;
+            const nameSize = isLandscape ? '8.5px' : '7.5px';
+            const emailSize = isLandscape ? '7.5px' : '6.5px';
+            return `<div style="font-weight: 600; color: #2c3e50; font-size: ${nameSize}; word-break: break-word;">${escapeHtml(name)}</div><div style="font-size: ${emailSize}; color: #7f8c8d; word-break: break-all;">${escapeHtml(email)}</div>`;
         }
 
         // Otherwise get inner text with preserved line breaks
@@ -136,7 +137,7 @@
                 const cell = cells[col.index];
                 if (cell) {
                     rowCells.push({
-                        content: extractCellContent(cell),
+                        content: extractCellContent(cell, isLandscape),
                         isAmount: /amount|金額|total/i.test(col.title) || cell.textContent.includes('¥'),
                         isOrderNum: /number|番号/i.test(col.title),
                         isStatus: /status|ステータス/i.test(col.title)
@@ -150,26 +151,28 @@
         });
 
         function getColumnWidth(colTitle, totalCols) {
-            if (/number|番号/i.test(colTitle)) return totalCols > 5 ? '13%' : '18%';
+            if (/number|番号/i.test(colTitle)) return totalCols > 5 ? '12%' : '18%';
             if (/customer|顧客/i.test(colTitle)) return totalCols > 5 ? '19%' : '26%';
-            if (/note|メモ/i.test(colTitle)) return '9%';
+            if (/note|メモ/i.test(colTitle)) return '8%';
             if (/item|商品/i.test(colTitle)) return '25%';
             if (/amount|金額|total/i.test(colTitle)) return totalCols > 5 ? '10%' : '16%';
-            if (/pickup|受取/i.test(colTitle)) return '15%';
-            if (/status|ステータス/i.test(colTitle)) return '9%';
-            if (/date|日付|日時/i.test(colTitle)) return '18%';
+            if (/pickup|受取/i.test(colTitle)) return '16%';
+            if (/status|ステータス/i.test(colTitle)) return totalCols > 5 ? '10%' : '15%';
+            if (/date|日付|日時/i.test(colTitle)) return '25%';
             return `${(100 / totalCols).toFixed(1)}%`;
         }
 
-        // Build temporary export container
+        // Build temporary export container with strict width safely under A4 printable dimensions (733px portrait, 1061px landscape)
+        const targetWidthPx = isLandscape ? 1000 : 690;
         const exportContainer = document.createElement('div');
         exportContainer.className = 'pdf-export-wrapper';
-        exportContainer.style.width = '100%';
-        exportContainer.style.maxWidth = '100%';
+        exportContainer.style.width = targetWidthPx + 'px';
+        exportContainer.style.maxWidth = targetWidthPx + 'px';
+        exportContainer.style.minWidth = targetWidthPx + 'px';
         exportContainer.style.background = '#ffffff';
         exportContainer.style.color = '#2c3e50';
         exportContainer.style.padding = '0';
-        exportContainer.style.margin = '0';
+        exportContainer.style.margin = '0 auto';
         exportContainer.style.boxSizing = 'border-box';
         exportContainer.style.overflow = 'hidden';
         exportContainer.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif';
@@ -182,19 +185,22 @@
             filterHtml = `<div><strong>${escapeHtml(labelFilters)}:</strong> ${escapeHtml(filterInfo)}</div>`;
         }
 
-        const thPadding = isLandscape ? '6px 5px' : '5px 3px';
-        const thFontSize = isLandscape ? '9.5px' : '8px';
+        const thPadding = isLandscape ? '5px 5px' : '4px 3px';
+        const thFontSize = isLandscape ? '9px' : '7.5px';
         const tdPadding = isLandscape ? '5px 5px' : '4px 3px';
-        const tdFontSize = isLandscape ? '9px' : '7.5px';
+        const tdFontSize = isLandscape ? '8.5px' : '7.5px';
 
+        let colgroupHtml = '<colgroup>';
         let tableHeaderHtml = '<tr>';
         includedCols.forEach(col => {
             const isAmount = /amount|金額|total/i.test(col.title);
             const isStatus = /status|ステータス/i.test(col.title);
             const align = isAmount ? 'right' : (isStatus ? 'center' : 'left');
             const colWidth = getColumnWidth(col.title, includedCols.length);
-            tableHeaderHtml += `<th style="width: ${colWidth}; text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: #2c3e50; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; box-sizing: border-box; word-break: break-word;">${escapeHtml(col.title)}</th>`;
+            colgroupHtml += `<col style="width: ${colWidth};">`;
+            tableHeaderHtml += `<th style="width: ${colWidth}; text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: #2c3e50; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; box-sizing: border-box; word-break: break-word; line-height: 1.15;">${escapeHtml(col.title)}</th>`;
         });
+        colgroupHtml += '</colgroup>';
         tableHeaderHtml += '</tr>';
 
         let tableBodyHtml = '';
@@ -206,7 +212,7 @@
                 const colWidth = getColumnWidth(colTitle, includedCols.length);
                 const align = cell.isAmount ? 'right' : (cell.isStatus ? 'center' : 'left');
                 const weight = cell.isOrderNum ? 'font-weight: 600;' : '';
-                tableBodyHtml += `<td style="width: ${colWidth}; text-align: ${align}; ${weight} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; vertical-align: top; word-break: break-word; overflow-wrap: break-word; line-height: 1.35; box-sizing: border-box;">${cell.content}</td>`;
+                tableBodyHtml += `<td style="width: ${colWidth}; text-align: ${align}; ${weight} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; vertical-align: top; word-break: break-word; overflow-wrap: break-word; line-height: 1.25; box-sizing: border-box;">${cell.content}</td>`;
             });
             tableBodyHtml += '</tr>';
         });
@@ -215,9 +221,9 @@
             <style>
                 .pdf-status-badge {
                     display: inline-block;
-                    padding: 1px ${isLandscape ? '5px' : '3px'};
-                    border-radius: 3px;
-                    font-size: ${isLandscape ? '8px' : '7px'};
+                    padding: 1px ${isLandscape ? '4px' : '2px'};
+                    border-radius: 2px;
+                    font-size: ${isLandscape ? '7.5px' : '6.5px'};
                     font-weight: bold;
                     text-transform: uppercase;
                     text-align: center;
@@ -231,18 +237,19 @@
                 .pdf-status-cancelled { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
                 .pdf-status-archived { background-color: #ececec; color: #444444; border: 1px solid #dddddd; }
             </style>
-            <div style="border-bottom: 2px solid #2c3e50; padding-bottom: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; width: 100%; box-sizing: border-box;">
+            <div style="border-bottom: 2px solid #2c3e50; padding-bottom: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end; width: 100%; box-sizing: border-box;">
                 <div>
-                    <h1 style="margin: 0 0 3px 0; font-size: 16px; color: #2c3e50; font-weight: bold;">🍕 ${escapeHtml(siteTitle)}</h1>
-                    <div style="font-size: 13px; font-weight: bold; color: #34495e;">${escapeHtml(reportTitle)}</div>
+                    <h1 style="margin: 0 0 2px 0; font-size: 15px; color: #2c3e50; font-weight: bold;">🍕 ${escapeHtml(siteTitle)}</h1>
+                    <div style="font-size: 12px; font-weight: bold; color: #34495e;">${escapeHtml(reportTitle)}</div>
                 </div>
-                <div style="text-align: right; font-size: 9px; color: #555; white-space: nowrap; line-height: 1.4;">
+                <div style="text-align: right; font-size: 8px; color: #555; white-space: nowrap; line-height: 1.35; padding-right: 2px;">
                     <div><strong>${escapeHtml(labelGeneratedAt)}:</strong> ${escapeHtml(timestampFormatted)}</div>
                     <div><strong>${escapeHtml(labelTotalRecords)}:</strong> ${escapeHtml(recordCountText)}</div>
                 </div>
             </div>
-            ${filterHtml ? `<div style="font-size: 9px; color: #555; margin-bottom: 8px; padding: 5px 8px; background: #edf2f7; border-radius: 4px; width: 100%; box-sizing: border-box; word-break: break-word;">${filterHtml}</div>` : ''}
-            <table style="width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 4px; box-sizing: border-box;">
+            ${filterHtml ? `<div style="font-size: 8px; color: #555; margin-bottom: 6px; padding: 4px 6px; background: #edf2f7; border-radius: 3px; width: 100%; box-sizing: border-box; word-break: break-word;">${filterHtml}</div>` : ''}
+            <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 3px; box-sizing: border-box;">
+                ${colgroupHtml}
                 <thead>
                     ${tableHeaderHtml}
                 </thead>
@@ -250,14 +257,14 @@
                     ${tableBodyHtml}
                 </tbody>
             </table>
-            <div style="margin-top: 10px; padding-top: 6px; border-top: 1px solid #e2e8f0; font-size: 8px; color: #888; display: flex; justify-content: space-between; width: 100%; box-sizing: border-box;">
+            <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #e2e8f0; font-size: 7.5px; color: #888; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
                 <span>${escapeHtml(siteTitle)} &bull; ${escapeHtml(reportTitle)}</span>
-                <span style="white-space: nowrap;">${escapeHtml(timestampFormatted)}</span>
+                <span style="white-space: nowrap; padding-right: 2px;">${escapeHtml(timestampFormatted)}</span>
             </div>
         `;
 
         const pdfOptions = {
-            margin: [7, 6, 7, 6],
+            margin: [8, 8, 8, 8],
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: {

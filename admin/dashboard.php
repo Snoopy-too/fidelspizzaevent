@@ -178,6 +178,6 @@ require_once __DIR__ . '/includes/header.php';
         </div>
 
         <script src="js/html2pdf.bundle.min.js"></script>
-        <script src="js/order-pdf-export.js"></script>
+        <script src="js/order-pdf-export.js?v=<?= filemtime(__DIR__ . '/js/order-pdf-export.js') ?>"></script>
 <?php
 require_once __DIR__ . '/includes/footer.php';
