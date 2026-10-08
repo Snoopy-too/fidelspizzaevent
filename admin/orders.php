@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../src/bootstrap.php';
 require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/includes/handle_comped_order.php';
 
 requireAdmin();
 
@@ -52,15 +53,17 @@ function getOrdersSortUrl(string $column, string $activeSort, string $activeOrde
     return 'orders.php?' . http_build_query(array_filter($query, static fn($v) => $v !== ''));
 }
 
-// Handle POST actions (status update / bulk actions)
+// Handle POST actions (status update / bulk actions / comped orders)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!verifyCsrfToken((string)($_POST['csrf_token'] ?? ''))) {
+    if ($compedSuccess = handleCompedOrderSubmission($container, $error_message)) {
+        $success_message = $compedSuccess;
+    } elseif (!verifyCsrfToken((string)($_POST['csrf_token'] ?? ''))) {
         $error_message = __('invalid_csrf_token') ?: 'Invalid CSRF token.';
     } elseif (isset($_POST['update_status'])) {
         $order_id = (int)($_POST['order_id'] ?? 0);
         $new_status = (string)($_POST['status'] ?? '');
         
-        if ($order_id && in_array($new_status, ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'], true)) {
+        if ($order_id && in_array($new_status, ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled', 'comped'], true)) {
             try {
                 $prevStmt = $db->prepare("SELECT status FROM orders WHERE id = ?");
                 $prevStmt->execute([$order_id]);
@@ -80,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = (string)$_POST['bulk_action'];
         $selected_orders = isset($_POST['selected_orders']) && is_array($_POST['selected_orders']) ? $_POST['selected_orders'] : [];
         
-        if (!empty($selected_orders) && in_array($action, ['confirmed', 'preparing', 'ready', 'completed', 'cancelled'], true)) {
+        if (!empty($selected_orders) && in_array($action, ['confirmed', 'preparing', 'ready', 'completed', 'cancelled', 'comped'], true)) {
             try {
                 $placeholders = str_repeat('?,', count($selected_orders) - 1) . '?';
                 $stmt = $db->prepare("UPDATE orders SET status = ?, updated_at = NOW() WHERE id IN ($placeholders)");
@@ -332,11 +335,18 @@ require_once __DIR__ . '/includes/header.php';
                             <option value="ready"><?= htmlspecialchars((string)__('mark_ready')) ?></option>
                             <option value="completed"><?= htmlspecialchars((string)__('mark_completed')) ?></option>
                             <option value="cancelled"><?= htmlspecialchars((string)__('mark_cancelled')) ?></option>
+                            <option value="comped"><?= htmlspecialchars((string)__('status_comped')) ?></option>
                         </select>
                         <button type="submit" class="btn"><?= htmlspecialchars((string)__('apply')) ?></button>
                     </div>
-                    <?php if (!empty($orders)): ?>
-                    <div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" 
+                                class="btn" 
+                                onclick="openCompedModal('add')" 
+                                style="background: #8e44ad;">
+                            🎁 <?= htmlspecialchars((string)__('add_comped_pizzas')) ?>
+                        </button>
+                        <?php if (!empty($orders)): ?>
                         <button type="button" 
                                 class="btn btn-export-pdf" 
                                 id="exportOrdersPdfBtn"
@@ -353,8 +363,8 @@ require_once __DIR__ . '/includes/header.php';
                                 data-filename="orders_<?= date('Y-m-d') ?>.pdf">
                             📄 <?= htmlspecialchars((string)__('export_pdf')) ?>
                         </button>
+                        <?php endif; ?>
                     </div>
-                    <?php endif; ?>
                 </div>
 
                 <table class="table" id="orders-table">
@@ -393,8 +403,8 @@ require_once __DIR__ . '/includes/header.php';
                                         <form method="post" style="display:inline;">
                                              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                             <input type="hidden" name="order_id" value="<?= (int)$order['id'] ?>">
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
-                                                <?php foreach (['pending','confirmed','preparing','ready','completed','cancelled'] as $status): ?>
+                                             <select name="status" class="status-select" onchange="this.form.submit()">
+                                                <?php foreach (['pending','confirmed','preparing','ready','completed','cancelled','comped'] as $status): ?>
                                                     <option value="<?= htmlspecialchars($status) ?>" <?= $order['status'] === $status ? 'selected' : '' ?>><?= htmlspecialchars((string)__('status_' . $status)) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
@@ -432,4 +442,5 @@ require_once __DIR__ . '/includes/header.php';
     <script src="js/html2pdf.bundle.min.js"></script>
     <script src="js/order-pdf-export.js?v=<?= filemtime(__DIR__ . '/js/order-pdf-export.js') ?>"></script>
 <?php
+require_once __DIR__ . '/includes/comped_modal.php';
 require_once __DIR__ . '/includes/footer.php';

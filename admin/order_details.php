@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order'])) {
         $pickup_time = trim((string)($_POST['pickup_time'] ?? ''));
         $notes = (string)($_POST['notes'] ?? '');
 
-        $valid_statuses = ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'];
+        $valid_statuses = ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled', 'comped'];
         if (!in_array($status, $valid_statuses, true)) {
             $error_message = __('invalid_order_status');
         } else {
@@ -69,6 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order'])) {
                 $stmt->execute([$order_id]);
                 $item_prices = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
+                $isCompedOrder = ($status === 'comped');
+
                 foreach ($quantities as $item_id => $qty) {
                     $itemIdInt = (int)$item_id;
                     $qtyInt = max(0, (int)$qty);
@@ -77,10 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order'])) {
                         $stmt = $db->prepare("DELETE FROM order_items WHERE id = ? AND order_id = ?");
                         $stmt->execute([$itemIdInt, $order_id]);
                     } else {
-                        $unitPrice = isset($item_prices[$itemIdInt]) ? (float)$item_prices[$itemIdInt] : 0.0;
+                        $unitPrice = $isCompedOrder ? 0.0 : (isset($item_prices[$itemIdInt]) ? (float)$item_prices[$itemIdInt] : 0.0);
                         $subtotal = $unitPrice * $qtyInt;
-                        $stmt = $db->prepare("UPDATE order_items SET quantity = ?, subtotal = ? WHERE id = ? AND order_id = ?");
-                        $stmt->execute([$qtyInt, $subtotal, $itemIdInt, $order_id]);
+                        $stmt = $db->prepare("UPDATE order_items SET quantity = ?, unit_price = ?, subtotal = ? WHERE id = ? AND order_id = ?");
+                        $stmt->execute([$qtyInt, $unitPrice, $subtotal, $itemIdInt, $order_id]);
                         $total += $subtotal;
                     }
                 }
@@ -177,7 +179,7 @@ require_once __DIR__ . '/includes/header.php';
                     <div>
                         <label for="status"><?= htmlspecialchars((string)__('order_status')) ?></label>
                         <select name="status" id="status">
-                            <?php foreach (['pending','confirmed','preparing','ready','completed','cancelled'] as $status): ?>
+                            <?php foreach (['pending','confirmed','preparing','ready','completed','cancelled','comped'] as $status): ?>
                             <option value="<?= htmlspecialchars($status) ?>" <?= $order['status'] === $status ? 'selected' : '' ?>><?= htmlspecialchars((string)__('status_' . $status)) ?></option>
                             <?php endforeach; ?>
                         </select>

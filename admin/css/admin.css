@@ -274,6 +274,7 @@ body {
 .status-completed { background: #d1ecf1; color: #0c5460; }
 .status-cancelled { background: #f8d7da; color: #721c24; }
 .status-archived { background: #ececec; color: #444; }
+.status-comped { background: #ede7f6; color: #5e35b1; border: 1px solid #d1c4e9; }
 
 /* Buttons & Controls */
 .btn {
@@ -886,5 +887,99 @@ textarea {
         background: none !important;
         color: black !important;
     }
+}
+
+/* Comped Pizza Modal Styles */
+.comped-modal-tabs {
+    display: flex;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 18px;
+    gap: 8px;
+}
+.comped-tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s ease;
+}
+.comped-tab-btn.active {
+    color: #8e44ad;
+    border-bottom-color: #8e44ad;
+}
+.comped-tab-content {
+    display: none;
+}
+.comped-tab-content.active {
+    display: block;
+}
+.comped-pizza-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+.comped-pizza-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.comped-pizza-img {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+}
+.comped-pizza-placeholder {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e2e8f0;
+    border-radius: 6px;
+    font-size: 1.3em;
+}
+.comped-qty-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.comped-qty-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    user-select: none;
+}
+.comped-qty-btn:hover {
+    background: #e2e8f0;
+}
+.comped-qty-input {
+    width: 50px;
+    text-align: center;
+    padding: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: bold;
 }
 

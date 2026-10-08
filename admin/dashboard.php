@@ -1,17 +1,29 @@
 <?php
 declare(strict_types=1);
 
-require_once '../config.php';
+require_once __DIR__ . '/../src/bootstrap.php';
 require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/includes/handle_comped_order.php';
 requireAdmin();
 
+$container = getServiceContainer();
 $config = getSiteConfig();
-$db = getDB();
+$db = $container->getPdo();
+
+$success_message = null;
+$error_message = null;
+if ($compedSuccess = handleCompedOrderSubmission($container, $error_message)) {
+    $success_message = $compedSuccess;
+}
 
 // Get dashboard statistics
 $stats = [];
 
-// Total orders (pending only)
+// Total comped pizzas
+$compedSummary = $container->getGetCompedOrdersUseCase()->getSummary();
+$stats['total_comped_pizzas'] = (int)($compedSummary['total_comped_pizzas'] ?? 0);
+
+// Total orders (pending customer orders only)
 $stmt = $db->query("SELECT COUNT(*) as total_orders FROM orders WHERE status = 'pending'");
 $stats['total_orders'] = $stmt->fetchColumn();
 
@@ -53,7 +65,13 @@ $popular_items = $stmt->fetchAll();
 
 $page_title = __('admin_dashboard');
 require_once __DIR__ . '/includes/header.php';
-?>
+        <?php if (!empty($success_message)): ?>
+            <div class="messages" style="margin-bottom: 20px;"><div class="message success" style="background: #d4edda; color: #155724; padding: 12px 16px; border-radius: 8px; border: 1px solid #c3e6cb; font-weight: 600;"><?= htmlspecialchars((string)$success_message) ?></div></div>
+        <?php endif; ?>
+        <?php if (!empty($error_message)): ?>
+            <div class="messages" style="margin-bottom: 20px;"><div class="message error" style="background: #f8d7da; color: #721c24; padding: 12px 16px; border-radius: 8px; border: 1px solid #f5c6cb; font-weight: 600;"><?= htmlspecialchars((string)$error_message) ?></div></div>
+        <?php endif; ?>
+
         <!-- Statistics Cards -->
         <div class="stats-grid">
             <div class="stat-card">
@@ -66,6 +84,12 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="stat-icon">💰</div>
                 <div class="stat-number"><?= formatPrice((float)($stats['total_revenue'] ?? 0)) ?></div>
                 <div class="stat-label"><?= __('total_revenue') ?></div>
+            </div>
+
+            <div class="stat-card" style="cursor: pointer; border-left: 4px solid #8e44ad;" onclick="openCompedModal('history')" title="<?= htmlspecialchars((string)__('comped_pizzas')) ?>">
+                <div class="stat-icon">🎁</div>
+                <div class="stat-number"><?= number_format((float)($stats['total_comped_pizzas'] ?? 0)) ?></div>
+                <div class="stat-label"><?= __('comped_pizzas') ?></div>
             </div>
             
             <div class="stat-card">
@@ -170,14 +194,18 @@ require_once __DIR__ . '/includes/header.php';
         <div class="section">
             <h2><?= __('quick_actions') ?></h2>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <button type="button" onclick="openCompedModal('add')" style="background: #8e44ad; color: white; padding: 20px; border-radius: 8px; border: none; cursor: pointer; text-align: center; font-weight: bold; font-size: 1.05em; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    🎁 <?= __('add_comped_pizzas') ?>
+                </button>
                 <a href="settings.php" style="background: #e74c3c; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">🔧 <?= __('update_event_settings') ?></a>
                 <a href="menu.php" style="background: #f39c12; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">🍕 <?= __('add_menu_item') ?></a>
                 <a href="orders.php?status=pending" style="background: #27ae60; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">⏳ <?= __('view_pending_orders') ?></a>
-                <a href="reports.php" style="background: #8e44ad; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">📊 <?= __('generate_reports') ?></a>
+                <a href="reports.php" style="background: #2980b9; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: bold;">📊 <?= __('generate_reports') ?></a>
             </div>
         </div>
 
         <script src="js/html2pdf.bundle.min.js"></script>
         <script src="js/order-pdf-export.js?v=<?= filemtime(__DIR__ . '/js/order-pdf-export.js') ?>"></script>
 <?php
+require_once __DIR__ . '/includes/comped_modal.php';
 require_once __DIR__ . '/includes/footer.php';

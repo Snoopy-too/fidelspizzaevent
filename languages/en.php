@@ -457,6 +457,23 @@ return [
     'update_password_btn' => '🔑 Update Password',
     'admin_password_changed_success' => 'Password for %s (%s) has been changed successfully.',
     'also_confirm_email_label' => 'Also mark email as confirmed (allows immediate login)',
+    'status_comped' => "Comp'd",
+    'comped_pizzas' => "Comp'd Pizzas",
+    'add_comped_pizzas' => "Add Comp'd Pizzas",
+    'comped_modal_title' => "Manage & Add Comp'd Pizzas",
+    'comped_modal_subtitle' => 'Plan complimentary pizzas for event helpers, staff, and buffer inventory (counted for ingredients, not sales orders).',
+    'comped_recipient_label' => 'Recipient / Purpose (Notes):',
+    'comped_recipient_placeholder' => 'e.g. Event helpers, volunteers, oven staff, buffer',
+    'comped_pickup_slot_label' => 'Pickup Time Slot (optional):',
+    'comped_pickup_slot_none' => 'General Event Buffer / Unscheduled',
+    'create_comped_order_btn' => "Create Comp'd Order (¥0)",
+    'comped_order_created_success' => "Comp'd pizza order #%s successfully created (%d pizzas).",
+    'comped_orders_history' => "Comp'd Pizzas List",
+    'no_comped_pizzas' => "No comp'd pizzas registered for this event yet.",
+    'total_pizzas_to_prep' => 'Total Pizzas to Prep',
+    'comped_badge' => "Comp'd",
+    'comped_filter' => "Comp'd",
+    'quick_add_comped' => "Add Comp'd",
 ];
 
 

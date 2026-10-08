@@ -233,4 +233,39 @@ final class ServiceContainer
         }
         return $this->orderWindowService;
     }
+
+    private ?\FidelsPizza\Domain\Repository\CompedOrderRepositoryInterface $compedOrderRepository = null;
+    private ?\FidelsPizza\Application\UseCase\CreateCompedOrderUseCase $createCompedOrderUseCase = null;
+    private ?\FidelsPizza\Application\UseCase\GetCompedOrdersUseCase $getCompedOrdersUseCase = null;
+
+    public function getCompedOrderRepository(): \FidelsPizza\Domain\Repository\CompedOrderRepositoryInterface
+    {
+        if ($this->compedOrderRepository === null) {
+            $this->compedOrderRepository = new \FidelsPizza\Infrastructure\Persistence\PdoCompedOrderRepository($this->pdo);
+        }
+        return $this->compedOrderRepository;
+    }
+
+    public function getCreateCompedOrderUseCase(): \FidelsPizza\Application\UseCase\CreateCompedOrderUseCase
+    {
+        if ($this->createCompedOrderUseCase === null) {
+            $this->createCompedOrderUseCase = new \FidelsPizza\Application\UseCase\CreateCompedOrderUseCase(
+                $this->getCompedOrderRepository(),
+                $this->getPickupTimeSlotRepository(),
+                $this->siteConfig
+            );
+        }
+        return $this->createCompedOrderUseCase;
+    }
+
+    public function getGetCompedOrdersUseCase(): \FidelsPizza\Application\UseCase\GetCompedOrdersUseCase
+    {
+        if ($this->getCompedOrdersUseCase === null) {
+            $this->getCompedOrdersUseCase = new \FidelsPizza\Application\UseCase\GetCompedOrdersUseCase(
+                $this->getCompedOrderRepository()
+            );
+        }
+        return $this->getCompedOrdersUseCase;
+    }
 }
+

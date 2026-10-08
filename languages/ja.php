@@ -457,6 +457,23 @@ return [
     'update_password_btn' => '🔑 パスワードを更新',
     'admin_password_changed_success' => '%s 様（%s）のパスワードを正常に変更しました。',
     'also_confirm_email_label' => 'メール確認済みにする（すぐにログイン可能にします）',
+    'status_comped' => '無料提供 (Comp)',
+    'comped_pizzas' => '無料提供ピザ',
+    'add_comped_pizzas' => '無料ピザを追加',
+    'comped_modal_title' => '無料提供ピザの管理・追加',
+    'comped_modal_subtitle' => 'お手伝いスタッフ用や予備バッファーなどの無料ピザを計画します（材料計算には含まれ、注文数・売上には含まれません）。',
+    'comped_recipient_label' => '受取人・目的（メモ）：',
+    'comped_recipient_placeholder' => '例：設営スタッフ、お手伝いボランティア、予備用など',
+    'comped_pickup_slot_label' => '受取時間帯（任意）：',
+    'comped_pickup_slot_none' => '指定なし／イベント全体の予備',
+    'create_comped_order_btn' => '無料オーダーを作成（¥0）',
+    'comped_order_created_success' => '無料ピザのオーダー #%s を作成しました（計 %d 枚）。',
+    'comped_orders_history' => '無料提供ピザ一覧',
+    'no_comped_pizzas' => 'このイベントの無料ピザはまだ登録されていません。',
+    'total_pizzas_to_prep' => '仕込み総ピザ数',
+    'comped_badge' => '無料提供',
+    'comped_filter' => '無料提供',
+    'quick_add_comped' => '無料ピザ追加',
 ];
 
 

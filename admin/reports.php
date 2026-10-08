@@ -13,7 +13,7 @@ $config = $stmt->fetch();
 $events_stmt = $db->query("
     SELECT 
         DATE(pickup_time) AS event_date,
-        COUNT(DISTINCT id) AS order_count,
+        COUNT(DISTINCT CASE WHEN status != 'comped' THEN id END) AS order_count,
         SUM(total_amount) AS total_revenue
     FROM orders
     WHERE pickup_time IS NOT NULL AND status != 'cancelled'
@@ -42,6 +42,7 @@ if ($selected_event === null && !empty($available_events)) {
 $item_totals = [];
 $event_order_count = 0;
 $event_total_revenue = 0.0;
+$comped_pizzas = 0;
 
 if ($selected_event === 'all') {
     $stmt = $db->query("
@@ -58,13 +59,23 @@ if ($selected_event === 'all') {
     $item_totals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $sum_stmt = $db->query("
-        SELECT COUNT(DISTINCT id) as order_count, SUM(total_amount) as total_revenue
+        SELECT 
+            COUNT(DISTINCT CASE WHEN status != 'comped' THEN id END) as order_count, 
+            SUM(total_amount) as total_revenue
         FROM orders
         WHERE status != 'cancelled'
     ");
     $summary = $sum_stmt->fetch(PDO::FETCH_ASSOC);
     $event_order_count = (int)($summary['order_count'] ?? 0);
     $event_total_revenue = (float)($summary['total_revenue'] ?? 0);
+
+    $comped_stmt = $db->query("
+        SELECT COALESCE(SUM(oi.quantity), 0) as comped_qty
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.status = 'comped'
+    ");
+    $comped_pizzas = (int)($comped_stmt->fetchColumn() ?: 0);
 } elseif ($selected_event !== null) {
     $stmt = $db->prepare("
         SELECT 
@@ -82,7 +93,9 @@ if ($selected_event === 'all') {
     $item_totals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $sum_stmt = $db->prepare("
-        SELECT COUNT(DISTINCT id) as order_count, SUM(total_amount) as total_revenue
+        SELECT 
+            COUNT(DISTINCT CASE WHEN status != 'comped' THEN id END) as order_count, 
+            SUM(total_amount) as total_revenue
         FROM orders
         WHERE DATE(pickup_time) = ?
           AND status != 'cancelled'
@@ -91,6 +104,16 @@ if ($selected_event === 'all') {
     $summary = $sum_stmt->fetch(PDO::FETCH_ASSOC);
     $event_order_count = (int)($summary['order_count'] ?? 0);
     $event_total_revenue = (float)($summary['total_revenue'] ?? 0);
+
+    $comped_stmt = $db->prepare("
+        SELECT COALESCE(SUM(oi.quantity), 0) as comped_qty
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        WHERE DATE(o.pickup_time) = ?
+          AND o.status = 'comped'
+    ");
+    $comped_stmt->execute([$selected_event]);
+    $comped_pizzas = (int)($comped_stmt->fetchColumn() ?: 0);
 }
 
 // --- 2. Calculate required ingredients ---
@@ -120,6 +143,8 @@ foreach ($item_totals as $item) {
             break;
     }
 }
+
+$sold_pizzas = max(0, $total_pizzas - $comped_pizzas);
 
 // Canned tomatoes (total pizzas × 50g)
 $canned_tomato = 50 * $total_pizzas;
@@ -181,8 +206,16 @@ require_once __DIR__ . '/includes/header.php';
                     📅 <?= $selected_event === 'all' ? __('all_events') : date('Y/m/d', strtotime($selected_event)) ?>
                 </span>
                 <span class="badge-pill">
-                    🍕 <?= number_format($total_pizzas) ?> <?= __('pizzas_sold') ?>
+                    🍕 <?= number_format($sold_pizzas) ?> <?= __('pizzas_sold') ?>
                 </span>
+                <?php if ($comped_pizzas > 0): ?>
+                <span class="badge-pill" style="background: #ede7f6; color: #5e35b1; border: 1px solid #d1c4e9;">
+                    🎁 <?= number_format($comped_pizzas) ?> <?= __('comped_pizzas') ?>
+                </span>
+                <span class="badge-pill" style="font-weight: bold;">
+                    📦 <?= number_format($total_pizzas) ?> <?= __('total_pizzas_to_prep') ?>
+                </span>
+                <?php endif; ?>
                 <span class="badge-pill">
                     📋 <?= number_format($event_order_count) ?> <?= __('orders_count') ?>
                 </span>

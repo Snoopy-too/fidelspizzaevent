@@ -109,7 +109,7 @@ CREATE TABLE `orders` (
   `user_id` int(11) NOT NULL,
   `order_number` varchar(20) NOT NULL,
   `total_amount` decimal(10,2) NOT NULL,
-  `status` enum('pending','confirmed','preparing','ready','completed','cancelled','archived') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','confirmed','preparing','ready','completed','cancelled','archived','comped') NOT NULL DEFAULT 'pending',
   `notes` text,
   `pickup_time` datetime DEFAULT NULL,
   `pickup_slot_id` int(11) DEFAULT NULL,
