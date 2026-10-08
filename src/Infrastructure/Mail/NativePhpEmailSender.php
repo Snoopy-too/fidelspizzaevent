@@ -46,11 +46,11 @@ final class NativePhpEmailSender implements EmailSenderInterface
             $domainParts = explode('@', $safeFromEmail);
             $fromDomain = (string)array_pop($domainParts);
         }
-        $messageId = sprintf('<%s.%s@%s>', bin2hex(random_bytes(12)), (string)time(), $fromDomain);
+        $messageId = sprintf('<%s.%s@%s>', bin2hex(random_bytes(12)), (string)microtime(true), $fromDomain);
         $dateHeader = date(DATE_RFC2822);
 
         // 4. Construct multipart/alternative email
-        $boundary = "=_fidels_boundary_" . md5(uniqid((string)time(), true));
+        $boundary = "=_fidels_boundary_" . md5(uniqid((string)microtime(true), true));
 
         $headers = [
             "Date: $dateHeader",
@@ -87,6 +87,16 @@ final class NativePhpEmailSender implements EmailSenderInterface
 
         // 5. Native PHP mail invocation with envelope sender flag (-f) for Return-Path SPF/DMARC alignment
         $additionalParams = "-f" . $safeFromEmail;
-        return @mail($safeToEmail, $encodedSubject, $multipartPayload, $headersStr, $additionalParams);
+        $sent = @mail($safeToEmail, $encodedSubject, $multipartPayload, $headersStr, $additionalParams);
+        if (!$sent) {
+            // Fallback retry without -f in case MTA restricts -f parameter for the web user
+            $sent = @mail($safeToEmail, $encodedSubject, $multipartPayload, $headersStr);
+        }
+
+        if (!$sent) {
+            error_log("[NativePhpEmailSender] mail() dispatch failed for recipient '$safeToEmail' (Subject: '$safeSubject')");
+        }
+
+        return $sent;
     }
 }

@@ -79,9 +79,13 @@ final class SendOrderNotificationUseCase
      */
     public function execute(int $orderId, string $eventType = 'created', ?string $overrideItemsText = null): bool
     {
-        // Fetch fresh site_config directly from DB so both admin_email and admin_email_2 are always current
-        $cfgStmt = $this->pdo->query("SELECT * FROM `site_config` ORDER BY `id` DESC LIMIT 1");
+        // Fetch fresh site_config directly from DB (align with admin/settings.php id = 1)
+        $cfgStmt = $this->pdo->query("SELECT * FROM `site_config` WHERE `id` = 1 LIMIT 1");
         $config = $cfgStmt ? ($cfgStmt->fetch(PDO::FETCH_ASSOC) ?: []) : [];
+        if (empty($config)) {
+            $cfgStmt = $this->pdo->query("SELECT * FROM `site_config` ORDER BY `id` ASC LIMIT 1");
+            $config = $cfgStmt ? ($cfgStmt->fetch(PDO::FETCH_ASSOC) ?: []) : [];
+        }
 
         // Fetch order and customer info
         $stmt = $this->pdo->prepare("
@@ -176,7 +180,7 @@ final class SendOrderNotificationUseCase
             if (!$hasPickupPlaceholder && $pickupDisplay !== 'N/A') {
                 $body .= "\n\nPickup Time: " . $pickupDisplay;
             }
-            $customerSent = $this->deliverPlainEmail(
+            $customerSent = $this->deliverEmail(
                 $customerEmail,
                 $placeholders['customer_name'],
                 $subject,
@@ -186,6 +190,28 @@ final class SendOrderNotificationUseCase
 
         // 2. Send email to all configured Administrator Emails (admin_email and admin_email_2)
         $adminEmails = self::extractAdminEmails($config);
+        if (empty($adminEmails)) {
+            // Fallback to active administrator accounts in admins table if site_config emails are empty
+            try {
+                $admStmt = $this->pdo->query("SELECT `email` FROM `admins` WHERE `email` IS NOT NULL AND `email` != ''");
+                if ($admStmt !== false) {
+                    $rawAdmins = $admStmt->fetchAll(PDO::FETCH_COLUMN);
+                    foreach ($rawAdmins as $rawEmail) {
+                        $clean = trim((string)$rawEmail);
+                        if (filter_var($clean, FILTER_VALIDATE_EMAIL)) {
+                            $adminEmails[] = $clean;
+                        }
+                    }
+                    $adminEmails = array_values(array_unique($adminEmails));
+                }
+            } catch (\Throwable) {
+                // Ignore fallback exception
+            }
+        }
+
+        $adminSentCount = 0;
+        $adminFailCount = 0;
+
         if (!empty($adminEmails)) {
             $adminTpl = $this->getTemplateWithFallback($adminTemplateName);
             $hasPickupPlaceholder = str_contains($adminTpl['body'], '{{pickup_time}}');
@@ -196,9 +222,28 @@ final class SendOrderNotificationUseCase
             }
 
             foreach ($adminEmails as $adminEmail) {
-                $this->deliverPlainEmail($adminEmail, 'Administrator', $adminSubject, $adminBody);
+                // Micro-pause (100ms) between sends to prevent server-side burst throttling on shared hosting
+                usleep(100000);
+                $sent = $this->deliverEmail($adminEmail, 'Administrator', $adminSubject, $adminBody);
+                if ($sent) {
+                    $adminSentCount++;
+                } else {
+                    $adminFailCount++;
+                }
             }
         }
+
+        error_log(sprintf(
+            "[OrderNotification] Order #%s (ID: %d, Event: %s): Customer email '%s' [%s]. Admin notifications dispatched to %d recipient(s) [Sent: %d, Failed: %d].",
+            $placeholders['order_number'],
+            $orderId,
+            $eventType,
+            $customerEmail,
+            $customerSent ? 'OK' : 'FAILED/SKIPPED',
+            count($adminEmails),
+            $adminSentCount,
+            $adminFailCount
+        ));
 
         return $customerSent;
     }
@@ -298,20 +343,73 @@ final class SendOrderNotificationUseCase
         return $text;
     }
 
-    private function deliverPlainEmail(string $toEmail, string $toName, string $subject, string $body): bool
+    private function deliverEmail(string $toEmail, string $toName, string $subject, string $body): bool
     {
         $safeTo = str_replace(["\r", "\n"], '', trim($toEmail));
         $safeSubject = str_replace(["\r", "\n"], '', trim($subject));
+        $safeName = str_replace(["\r", "\n"], '', trim($toName));
 
-        if (function_exists('sendEmail')) {
-            return (bool)@sendEmail($safeTo, $safeSubject, $body);
-        }
-
-        try {
-            $htmlBody = nl2br(htmlspecialchars($body, ENT_QUOTES, 'UTF-8'));
-            return $this->emailSender->send($safeTo, $toName, $safeSubject, $htmlBody, $body);
-        } catch (\Throwable) {
+        if (!filter_var($safeTo, FILTER_VALIDATE_EMAIL)) {
+            error_log("[OrderNotification] Skipping invalid email address: '$safeTo'");
             return false;
         }
+
+        $htmlBody = $this->buildHtmlEmail($safeSubject, $body);
+
+        try {
+            $sent = $this->emailSender->send(
+                $safeTo,
+                $safeName !== '' ? $safeName : $safeTo,
+                $safeSubject,
+                $htmlBody,
+                $body
+            );
+            if (!$sent) {
+                error_log("[OrderNotification] Email sender returned false for recipient '$safeTo' (Subject: '$safeSubject')");
+            }
+            return $sent;
+        } catch (\Throwable $e) {
+            error_log("[OrderNotification] Exception while delivering email to '$safeTo': " . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function buildHtmlEmail(string $subject, string $plainTextBody): string
+    {
+        $escapedTitle = htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
+        $escapedBody = nl2br(htmlspecialchars($plainTextBody, ENT_QUOTES, 'UTF-8'));
+        $currentYear = date('Y');
+
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{$escapedTitle}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px 12px; color: #1e293b; -webkit-font-smoothing: antialiased;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+        <tr>
+            <td style="background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%); padding: 24px; text-align: center; color: #ffffff;">
+                <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">🍕 {$escapedTitle}</h1>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 28px 24px; line-height: 1.7; font-size: 15px; color: #334155;">
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; font-size: 14px; line-height: 1.8; color: #1e293b; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">
+                    {$escapedBody}
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
+                <p style="margin: 0; font-size: 11px; color: #94a3b8;">&copy; {$currentYear} Fidel's Pizza Event. All rights reserved.</p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+HTML;
     }
 }
