@@ -65,6 +65,7 @@ $popular_items = $stmt->fetchAll();
 
 $page_title = __('admin_dashboard');
 require_once __DIR__ . '/includes/header.php';
+?>
         <?php if (!empty($success_message)): ?>
             <div class="messages" style="margin-bottom: 20px;"><div class="message success" style="background: #d4edda; color: #155724; padding: 12px 16px; border-radius: 8px; border: 1px solid #c3e6cb; font-weight: 600;"><?= htmlspecialchars((string)$success_message) ?></div></div>
         <?php endif; ?>
