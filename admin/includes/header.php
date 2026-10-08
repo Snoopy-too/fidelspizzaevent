@@ -14,7 +14,7 @@ $displayTitle = isset($page_title) ? (string)$page_title : (isset($pageTitle) ? 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($displayTitle) ?> - <?= htmlspecialchars((string)($config['site_title'] ?? "Fidel's Pizza Event")) ?></title>
-    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="css/admin.css?v=<?= filemtime(__DIR__ . '/../css/admin.css') ?>">
 </head>
 <body>
     <div class="header">
