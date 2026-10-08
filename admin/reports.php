@@ -5,9 +5,8 @@ requireAdmin();
 
 $db = getDB();
 
-// Site config (for title)
-$stmt = $db->query("SELECT site_title FROM site_config LIMIT 1");
-$config = $stmt->fetch();
+// Site config (for title & event date)
+$config = getSiteConfig();
 
 // --- 1. Fetch available event dates from orders ---
 $events_stmt = $db->query("
@@ -22,6 +21,24 @@ $events_stmt = $db->query("
 ");
 $available_events = $events_stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$active_event_date = !empty($config['event_date']) ? (string)$config['event_date'] : null;
+if ($active_event_date !== null) {
+    $has_active = false;
+    foreach ($available_events as $ev) {
+        if ($ev['event_date'] === $active_event_date) {
+            $has_active = true;
+            break;
+        }
+    }
+    if (!$has_active) {
+        array_unshift($available_events, [
+            'event_date' => $active_event_date,
+            'order_count' => 0,
+            'total_revenue' => 0.0,
+        ]);
+    }
+}
+
 // Determine selected event date
 $selected_event = null;
 if (isset($_GET['event_date'])) {
@@ -33,9 +50,13 @@ if (isset($_GET['event_date'])) {
     }
 }
 
-// Default to the latest available event date if none is explicitly requested
-if ($selected_event === null && !empty($available_events)) {
-    $selected_event = $available_events[0]['event_date'];
+// Default to the active event date or latest available event date if none is explicitly requested
+if ($selected_event === null) {
+    if ($active_event_date !== null) {
+        $selected_event = $active_event_date;
+    } elseif (!empty($available_events)) {
+        $selected_event = $available_events[0]['event_date'];
+    }
 }
 
 // --- 2. Get total orders for each menu item for the selected event ---
@@ -77,6 +98,14 @@ if ($selected_event === 'all') {
     ");
     $comped_pizzas = (int)($comped_stmt->fetchColumn() ?: 0);
 } elseif ($selected_event !== null) {
+    $active_event_date = !empty($config['event_date']) ? (string)$config['event_date'] : null;
+    $is_active_or_latest = ($selected_event === $active_event_date || (!empty($available_events) && $selected_event === $available_events[0]['event_date']));
+
+    // For active/latest event, include general buffer comp'd orders where pickup_time is unscheduled (NULL)
+    $eventDateCondition = $is_active_or_latest
+        ? "(DATE(o.pickup_time) = ? OR (o.pickup_time IS NULL AND o.status = 'comped'))"
+        : "DATE(o.pickup_time) = ?";
+
     $stmt = $db->prepare("
         SELECT 
             mi.name, 
@@ -84,7 +113,7 @@ if ($selected_event === 'all') {
         FROM order_items oi
         JOIN menu_items mi ON oi.menu_item_id = mi.id
         JOIN orders o ON oi.order_id = o.id
-        WHERE DATE(o.pickup_time) = ?
+        WHERE $eventDateCondition
           AND o.status != 'cancelled'
         GROUP BY mi.id, mi.name
         ORDER BY total_quantity DESC
@@ -105,11 +134,15 @@ if ($selected_event === 'all') {
     $event_order_count = (int)($summary['order_count'] ?? 0);
     $event_total_revenue = (float)($summary['total_revenue'] ?? 0);
 
+    $compedCondition = $is_active_or_latest
+        ? "(DATE(o.pickup_time) = ? OR o.pickup_time IS NULL)"
+        : "DATE(o.pickup_time) = ?";
+
     $comped_stmt = $db->prepare("
         SELECT COALESCE(SUM(oi.quantity), 0) as comped_qty
         FROM order_items oi
         JOIN orders o ON oi.order_id = o.id
-        WHERE DATE(o.pickup_time) = ?
+        WHERE $compedCondition
           AND o.status = 'comped'
     ");
     $comped_stmt->execute([$selected_event]);

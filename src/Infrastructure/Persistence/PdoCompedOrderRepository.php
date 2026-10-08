@@ -133,7 +133,7 @@ final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
         $whereSql = "WHERE o.status = 'comped'";
 
         if ($eventDate !== null && $eventDate !== '' && $eventDate !== 'all') {
-            $whereSql .= " AND DATE(o.pickup_time) = ?";
+            $whereSql .= " AND (DATE(o.pickup_time) = ? OR o.pickup_time IS NULL)";
             $params[] = $eventDate;
         }
 
@@ -218,7 +218,7 @@ final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
         $whereSql = "WHERE o.status = 'comped'";
 
         if ($eventDate !== null && $eventDate !== '' && $eventDate !== 'all') {
-            $whereSql .= " AND DATE(o.pickup_time) = ?";
+            $whereSql .= " AND (DATE(o.pickup_time) = ? OR o.pickup_time IS NULL)";
             $params[] = $eventDate;
         }
 

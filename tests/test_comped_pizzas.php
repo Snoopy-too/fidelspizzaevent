@@ -208,6 +208,83 @@ assertTrue($totalPizzasToPrep === 7, "Required Ingredients counts ALL 7 pizzas (
 $translatedCompedJa = translateStatus('comped');
 assertTrue(!empty($translatedCompedJa), "translateStatus('comped') returns localized label: $translatedCompedJa");
 
+// Test 9: Unscheduled buffer comped order (pickupSlotId = null)
+$bufferRequest = new CreateCompedOrderRequest(
+    adminId: 1,
+    itemQuantities: [
+        3 => 4 // 4 Cheese Pizzas buffer
+    ],
+    notes: 'General event buffer dough',
+    pickupSlotId: null
+);
+$resBuffer = $createUseCase->execute($bufferRequest);
+assertTrue($resBuffer->success === true, "Unscheduled buffer comped order successfully created");
+assertTrue($resBuffer->totalPizzas === 4, "Buffer order quantity is 4 pizzas");
+
+$bufferOrderRow = $pdo->query("SELECT * FROM orders WHERE id = " . (int)$resBuffer->orderId)->fetch(PDO::FETCH_ASSOC);
+assertTrue($bufferOrderRow['pickup_time'] === null, "Buffer order pickup_time is NULL (unscheduled)");
+assertTrue($bufferOrderRow['pickup_slot_id'] === null, "Buffer order pickup_slot_id is NULL");
+
+// Test 10: Date-filtered summary includes both scheduled (5) and unscheduled (4) comped orders = 9 total
+$dateSummary = $getUseCase->getSummary('2026-11-02');
+assertTrue($dateSummary['total_comped_pizzas'] === 9, "Date-filtered getSummary('2026-11-02') includes both scheduled and unscheduled buffer orders (5 + 4 = 9 pizzas)");
+assertTrue($dateSummary['total_comped_orders'] === 2, "Date-filtered getSummary reports 2 comped orders");
+
+// Test 11: Reports page event query math matches all 9 comped pizzas
+$is_active_or_latest = true;
+$selected_event = '2026-11-02';
+$eventDateCondition = $is_active_or_latest
+    ? "(DATE(o.pickup_time) = ? OR (o.pickup_time IS NULL AND o.status = 'comped'))"
+    : "DATE(o.pickup_time) = ?";
+$compedCondition = $is_active_or_latest
+    ? "(DATE(o.pickup_time) = ? OR o.pickup_time IS NULL)"
+    : "DATE(o.pickup_time) = ?";
+
+// Comped pizzas count for event:
+$compedReportStmt = $pdo->prepare("
+    SELECT COALESCE(SUM(oi.quantity), 0) as comped_qty
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE $compedCondition
+      AND o.status = 'comped'
+");
+$compedReportStmt->execute([$selected_event]);
+$reportCompedPizzas = (int)$compedReportStmt->fetchColumn();
+assertTrue($reportCompedPizzas === 9, "Reports page event query correctly counts 9 comped pizzas (4 buffer + 5 scheduled)");
+
+// Required ingredients prep total for event:
+$eventItemStmt = $pdo->prepare("
+    SELECT mi.name, SUM(oi.quantity) as total_quantity
+    FROM order_items oi
+    JOIN menu_items mi ON oi.menu_item_id = mi.id
+    JOIN orders o ON oi.order_id = o.id
+    WHERE $eventDateCondition
+      AND o.status != 'cancelled'
+    GROUP BY mi.id, mi.name
+");
+$eventItemStmt->execute([$selected_event]);
+$eventItemTotals = $eventItemStmt->fetchAll(PDO::FETCH_ASSOC);
+$eventTotalPrep = 0;
+foreach ($eventItemTotals as $row) {
+    $eventTotalPrep += (int)$row['total_quantity'];
+}
+// 9 comped + 2 customer = 11 total pizzas
+assertTrue($eventTotalPrep === 11, "Event Required Ingredients counts all 11 pizzas (9 comped + 2 customer pizzas)");
+
+// Customer orders count for event remains 1, revenue remains 3000
+$eventSumStmt = $pdo->prepare("
+    SELECT 
+        COUNT(DISTINCT CASE WHEN status != 'comped' THEN id END) as order_count, 
+        SUM(total_amount) as total_revenue
+    FROM orders
+    WHERE DATE(pickup_time) = ?
+      AND status != 'cancelled'
+");
+$eventSumStmt->execute([$selected_event]);
+$eventSum = $eventSumStmt->fetch(PDO::FETCH_ASSOC);
+assertTrue((int)$eventSum['order_count'] === 1, "Reports page customer order count is strictly 1");
+assertTrue((float)$eventSum['total_revenue'] === 3000.0, "Reports page revenue is strictly ¥3,000");
+
 echo "\n===========================================\n";
 echo "SUMMARY: $testsPassed passed, $testsFailed failed\n";
 echo "===========================================\n";
