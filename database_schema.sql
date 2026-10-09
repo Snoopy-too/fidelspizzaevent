@@ -201,6 +201,7 @@ CREATE TABLE `users` (
   `phone` varchar(20) DEFAULT NULL,
   `is_confirmed` tinyint(1) DEFAULT '0',
   `accepts_marketing` tinyint(1) NOT NULL DEFAULT '1',
+  `preferred_lang` varchar(10) NOT NULL DEFAULT 'ja',
   `confirmation_token` varchar(64) DEFAULT NULL,
   `unsubscribe_token` varchar(64) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,

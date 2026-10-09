@@ -219,6 +219,7 @@ return [
     'confirm_password' => 'パスワード（確認）',
     'account_status' => 'アカウントステータス',
     'email_confirmed' => 'メール確認済み',
+    'preferred_language' => '使用言語（通知・連絡用）',
     'save_user' => 'ユーザーを保存',
     'back_to_users' => '← ユーザー一覧に戻る',
     'user_added_success' => 'ユーザーを正常に追加しました',

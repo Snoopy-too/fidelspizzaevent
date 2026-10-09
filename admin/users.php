@@ -8,9 +8,17 @@ requireAdmin();
 $config = getSiteConfig();
 $db = getDB();
 
-// Fetch all users with marketing consent status
+// Ensure preferred_lang column exists (self-healing migration)
+try {
+    $colCheck = $db->query("SHOW COLUMNS FROM `users` LIKE 'preferred_lang'");
+    if ($colCheck !== false && $colCheck->rowCount() === 0) {
+        $db->exec("ALTER TABLE `users` ADD COLUMN `preferred_lang` VARCHAR(10) NOT NULL DEFAULT 'ja' AFTER `accepts_marketing`");
+    }
+} catch (\Throwable) {}
+
+// Fetch all users with marketing consent and preferred language status
 $stmt = $db->query("
-    SELECT id, first_name, last_name, email, is_confirmed, accepts_marketing, created_at
+    SELECT *
     FROM users 
     ORDER BY created_at DESC
 ");
@@ -78,6 +86,11 @@ require_once __DIR__ . '/includes/header.php';
                                 <?php else: ?>
                                     <span class="status-badge status-pending"><?= __('pending') ?></span>
                                 <?php endif; ?>
+                                <?php if (($user['preferred_lang'] ?? 'ja') === 'en'): ?>
+                                    <span style="display: inline-block; background: #e8f4fd; color: #2980b9; padding: 2px 7px; border-radius: 10px; font-size: 0.8em; font-weight: bold; margin-left: 4px;" title="Preferred Language: English">🇺🇸 EN</span>
+                                <?php else: ?>
+                                    <span style="display: inline-block; background: #fdf2e9; color: #d35400; padding: 2px 7px; border-radius: 10px; font-size: 0.8em; font-weight: bold; margin-left: 4px;" title="Preferred Language: Japanese">🇯🇵 JA</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if (!empty($user['accepts_marketing'])): ?>
@@ -101,6 +114,7 @@ require_once __DIR__ . '/includes/header.php';
                                     'phone'             => (string)($user['phone'] ?? ''),
                                     'is_confirmed'      => (int)$user['is_confirmed'] === 1,
                                     'accepts_marketing' => (int)($user['accepts_marketing'] ?? 1) === 1,
+                                    'preferred_lang'    => (string)($user['preferred_lang'] ?? 'ja'),
                                 ];
                                 $userJsonAttr = htmlspecialchars(json_encode($userPayload, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
                                 $userFullNameAttr = htmlspecialchars((string)($user['first_name'] . ' ' . $user['last_name']), ENT_QUOTES, 'UTF-8');
@@ -204,6 +218,10 @@ require_once __DIR__ . '/includes/header.php';
                         <div class="modal-detail-item">
                             <span class="modal-detail-label"><?= __('marketing_consent') ?></span>
                             <div id="detailMarketingContainer" style="margin-top: 4px;">-</div>
+                        </div>
+                        <div class="modal-detail-item">
+                            <span class="modal-detail-label"><?= htmlspecialchars((string)__('preferred_language'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <div id="detailLangContainer" style="margin-top: 4px;">-</div>
                         </div>
                     </div>
 
@@ -384,6 +402,14 @@ require_once __DIR__ . '/includes/header.php';
                         <small style="color: #64748b; display: block; margin-top: 4px;"><?= htmlspecialchars((string)__('leave_blank_keep_password'), ENT_QUOTES, 'UTF-8') ?></small>
                     </div>
 
+                    <div class="form-group">
+                        <label for="editPreferredLang"><?= htmlspecialchars((string)__('preferred_language'), ENT_QUOTES, 'UTF-8') ?></label>
+                        <select id="editPreferredLang" name="preferred_lang" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; background: #fff;">
+                            <option value="ja">🇯🇵 日本語 (Japanese)</option>
+                            <option value="en">🇺🇸 English</option>
+                        </select>
+                    </div>
+
                     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 5px;">
                         <label style="margin: 0; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="editIsConfirmed" name="is_confirmed" style="width: 18px; height: 18px; cursor: pointer;">
@@ -480,6 +506,14 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="form-group">
                         <label for="addPassword"><?= __('password') ?> *</label>
                         <input type="password" id="addPassword" name="password" minlength="6" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="addPreferredLang"><?= htmlspecialchars((string)__('preferred_language'), ENT_QUOTES, 'UTF-8') ?></label>
+                        <select id="addPreferredLang" name="preferred_lang" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; background: #fff;">
+                            <option value="ja" selected>🇯🇵 日本語 (Japanese)</option>
+                            <option value="en">🇺🇸 English</option>
+                        </select>
                     </div>
 
                     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 5px;">
@@ -579,6 +613,16 @@ require_once __DIR__ . '/includes/header.php';
                     marketingContainer.innerHTML = '<span style="display: inline-block; background: #fbeee6; color: #e67e22; padding: 3px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">✕ <?= htmlspecialchars(__('opted_out')) ?></span>';
                 }
 
+                // Preferred Language Badge
+                const langContainer = document.getElementById('detailLangContainer');
+                if (langContainer) {
+                    if (data.user.preferred_lang === 'en') {
+                        langContainer.innerHTML = '<span class="status-badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">🇺🇸 English</span>';
+                    } else {
+                        langContainer.innerHTML = '<span class="status-badge" style="background: #fef3c7; color: #92400e; font-weight: 700;">🇯🇵 日本語</span>';
+                    }
+                }
+
                 // Orders Table
                 const ordersTable = document.getElementById('detailOrdersTable');
                 const ordersTbody = document.getElementById('detailOrdersTbody');
@@ -628,6 +672,10 @@ require_once __DIR__ . '/includes/header.php';
         if (pwdField) {
             pwdField.value = '';
             pwdField.type = 'password';
+        }
+        const langField = document.getElementById('editPreferredLang');
+        if (langField) {
+            langField.value = user.preferred_lang || 'ja';
         }
         document.getElementById('editIsConfirmed').checked = !!user.is_confirmed;
         document.getElementById('editAcceptsMarketing').checked = !!user.accepts_marketing;
@@ -736,6 +784,10 @@ require_once __DIR__ . '/includes/header.php';
     // Open Add User Modal
     function openAddUserModal() {
         document.getElementById('addUserForm').reset();
+        const addLangField = document.getElementById('addPreferredLang');
+        if (addLangField) {
+            addLangField.value = 'ja';
+        }
         document.getElementById('addIsConfirmed').checked = true;
         document.getElementById('addAcceptsMarketing').checked = true;
         openModal('userAddModal');

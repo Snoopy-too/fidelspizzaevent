@@ -219,6 +219,7 @@ return [
     'confirm_password' => 'Confirm Password',
     'account_status' => 'Account Status',
     'email_confirmed' => 'Email Confirmed',
+    'preferred_language' => 'Preferred Language',
     'save_user' => 'Save User',
     'back_to_users' => '← Back to User List',
     'user_added_success' => 'User added successfully',

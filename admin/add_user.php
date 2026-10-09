@@ -29,13 +29,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $marketing = isset($_POST['accepts_marketing']) ? 1 : 0;
+                $preferredLang = in_array((string)($_POST['preferred_lang'] ?? 'ja'), ['ja', 'en'], true) ? (string)$_POST['preferred_lang'] : 'ja';
                 $unsubToken = bin2hex(random_bytes(32));
 
+                try {
+                    $colCheck = $db->query("SHOW COLUMNS FROM `users` LIKE 'preferred_lang'");
+                    if ($colCheck !== false && $colCheck->rowCount() === 0) {
+                        $db->exec("ALTER TABLE `users` ADD COLUMN `preferred_lang` VARCHAR(10) NOT NULL DEFAULT 'ja' AFTER `accepts_marketing`");
+                    }
+                } catch (\Throwable) {}
+
                 $stmt = $db->prepare("
-                    INSERT INTO users (first_name, last_name, email, phone, password_hash, is_confirmed, accepts_marketing, unsubscribe_token, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    INSERT INTO users (first_name, last_name, email, phone, password_hash, is_confirmed, accepts_marketing, unsubscribe_token, preferred_lang, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
-                $stmt->execute([$first, $last, $email, $phone, $hash, $status, $marketing, $unsubToken]);
+                $stmt->execute([$first, $last, $email, $phone, $hash, $status, $marketing, $unsubToken, $preferredLang]);
 
                 $newId = (int)$db->lastInsertId();
                 setFlash('success', __('user_added_success') ?: 'User created successfully.');
@@ -86,6 +94,12 @@ require_once __DIR__ . '/includes/header.php';
 
                 <label for="password"><?= __('password') ?></label>
                 <input type="password" id="password" name="password" required>
+
+                <label for="preferred_lang"><?= htmlspecialchars((string)__('preferred_language'), ENT_QUOTES, 'UTF-8') ?></label>
+                <select id="preferred_lang" name="preferred_lang" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; background: #fff; margin-bottom: 12px;">
+                    <option value="ja" <?= ($_POST['preferred_lang'] ?? 'ja') === 'ja' ? 'selected' : '' ?>>🇯🇵 日本語 (Japanese)</option>
+                    <option value="en" <?= ($_POST['preferred_lang'] ?? '') === 'en' ? 'selected' : '' ?>>🇺🇸 English</option>
+                </select>
 
                 <label style="margin-top: 20px; font-weight: normal; display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" name="is_confirmed" <?= !empty($_POST['is_confirmed']) ? 'checked' : '' ?>> <?= __('email_confirmed') ?>

@@ -87,8 +87,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $stmt = $db->prepare("UPDATE users SET first_name=?, last_name=?, email=?, phone=?, is_confirmed=?, accepts_marketing=? WHERE id=?");
-    $stmt->execute([$first, $last, $email, $phone, $status, $marketing, $id]);
+    $preferredLang = in_array((string)($_POST['preferred_lang'] ?? 'ja'), ['ja', 'en'], true) ? (string)$_POST['preferred_lang'] : 'ja';
+
+    // Ensure preferred_lang column exists before updating
+    try {
+        $colCheck = $db->query("SHOW COLUMNS FROM `users` LIKE 'preferred_lang'");
+        if ($colCheck !== false && $colCheck->rowCount() === 0) {
+            $db->exec("ALTER TABLE `users` ADD COLUMN `preferred_lang` VARCHAR(10) NOT NULL DEFAULT 'ja' AFTER `accepts_marketing`");
+        }
+    } catch (\Throwable) {}
+
+    $stmt = $db->prepare("UPDATE users SET first_name=?, last_name=?, email=?, phone=?, is_confirmed=?, accepts_marketing=?, preferred_lang=? WHERE id=?");
+    $stmt->execute([$first, $last, $email, $phone, $status, $marketing, $preferredLang, $id]);
 
     if ($newPassword !== '') {
         $container->getResetPasswordUseCase()->adminResetPassword($id, $newPassword);
@@ -133,6 +143,12 @@ require_once __DIR__ . '/includes/header.php';
                     </button>
                 </div>
                 <p style="font-size: 0.85em; color: #64748b; margin-top: 4px;"><?= htmlspecialchars((string)__('leave_blank_keep_password'), ENT_QUOTES, 'UTF-8') ?></p>
+
+                <label for="preferred_lang" style="margin-top: 15px; display: block; font-weight: bold;"><?= htmlspecialchars((string)__('preferred_language'), ENT_QUOTES, 'UTF-8') ?></label>
+                <select id="preferred_lang" name="preferred_lang" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em;">
+                    <option value="ja" <?= ($user['preferred_lang'] ?? 'ja') === 'ja' ? 'selected' : '' ?>>🇯🇵 日本語 (Japanese)</option>
+                    <option value="en" <?= ($user['preferred_lang'] ?? 'ja') === 'en' ? 'selected' : '' ?>>🇺🇸 English</option>
+                </select>
 
                 <label style="margin-top: 20px; font-weight: normal; display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" name="is_confirmed" <?= !empty($user['is_confirmed']) ? 'checked' : '' ?>> <?= htmlspecialchars((string)__('email_confirmed'), ENT_QUOTES, 'UTF-8') ?>

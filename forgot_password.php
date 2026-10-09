@@ -191,6 +191,14 @@ $currentLang = htmlspecialchars((string)($_SESSION['lang'] ?? 'ja'), ENT_QUOTES,
 </head>
 <body>
     <div class="container">
+        <!-- Language Switcher -->
+        <?php $currentLang = (string)($_SESSION['lang'] ?? 'ja'); ?>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <a href="?lang=<?= $currentLang === 'ja' ? 'en' : 'ja' ?>" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 0.88em; font-weight: 700; text-decoration: none; color: #4b5563; background: #f3f4f6; border: 1px solid #d1d5db; transition: all 0.2s ease;">
+                🌐 <?= $currentLang === 'ja' ? 'English' : '日本語' ?>
+            </a>
+        </div>
+
         <div class="pizza-icon">🔑</div>
         <h1><?= htmlspecialchars((string)__('forgot_password_title'), ENT_QUOTES, 'UTF-8') ?></h1>
 

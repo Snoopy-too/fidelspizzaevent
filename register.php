@@ -8,8 +8,11 @@ $error = '';
 $success = '';
 $code_verified = false;
 
-// Check if access code is provided and valid
+// Check if access code is provided and valid, or already verified in session
 if (!empty($_POST['access_code']) && (string)$_POST['access_code'] === (string)($config['registration_code'] ?? '')) {
+    $code_verified = true;
+    $_SESSION['registration_access_code_verified'] = true;
+} elseif (!empty($_SESSION['registration_access_code_verified'])) {
     $code_verified = true;
 }
 
@@ -50,14 +53,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                     $password_hash = hashPassword($password);
                     $confirmation_token = generateToken();
                     $unsubscribe_token = generateToken();
+                    $currentLang = (string)($_SESSION['lang'] ?? 'ja');
                     
-                    $stmt = $db->prepare("INSERT INTO users (first_name, last_name, email, phone, password_hash, confirmation_token, unsubscribe_token, accepts_marketing) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
-                    $stmt->execute([$first_name, $last_name, $email, $phone, $password_hash, $confirmation_token, $unsubscribe_token]);
+                    // Self-healing migration for preferred_lang column
+                    try {
+                        $colCheck = $db->query("SHOW COLUMNS FROM `users` LIKE 'preferred_lang'");
+                        if ($colCheck !== false && $colCheck->rowCount() === 0) {
+                            $db->exec("ALTER TABLE `users` ADD COLUMN `preferred_lang` VARCHAR(10) NOT NULL DEFAULT 'ja' AFTER `accepts_marketing`");
+                        }
+                    } catch (\Throwable) {}
+
+                    $stmt = $db->prepare("INSERT INTO users (first_name, last_name, email, phone, password_hash, confirmation_token, unsubscribe_token, accepts_marketing, preferred_lang) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)");
+                    $stmt->execute([$first_name, $last_name, $email, $phone, $password_hash, $confirmation_token, $unsubscribe_token, $currentLang]);
                     
+                    unset($_SESSION['registration_access_code_verified']);
+
                     // Send confirmation email via Clean Architecture UseCase
                     $container = getServiceContainer();
                     $sendConfirmationUseCase = $container->getSendRegistrationConfirmationUseCase();
-                    $currentLang = (string)($_SESSION['lang'] ?? 'ja');
 
                     if ($sendConfirmationUseCase->execute($email, $first_name, $confirmation_token, $currentLang)) {
                         $success = __('success_registration');
@@ -88,9 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         }
     }
 }
+$currentLang = (string)($_SESSION['lang'] ?? 'ja');
 ?>
 <!DOCTYPE html>
-<html lang="<?= $_SESSION['lang'] ?? 'ja' ?>">
+<html lang="<?= htmlspecialchars($currentLang) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -262,6 +276,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
 </head>
 <body>
     <div class="container">
+        <!-- Language Switcher -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+            <a href="?lang=<?= $currentLang === 'ja' ? 'en' : 'ja' ?>" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 0.88em; font-weight: 700; text-decoration: none; color: #4b5563; background: #f3f4f6; border: 1px solid #d1d5db; transition: all 0.2s ease;">
+                🌐 <?= $currentLang === 'ja' ? 'English' : '日本語' ?>
+            </a>
+        </div>
+
         <h1>🍕 <?= __('register_title') ?></h1>
         
         <?php if ($error): ?>
@@ -289,30 +310,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                 <input type="hidden" name="csrf_token" value="<?= getCsrfToken() ?>">
                 <input type="hidden" name="access_code" value="<?= htmlspecialchars((string)($_POST['access_code'] ?? '')) ?>">
                 
-                <div class="form-group">
-                    <label for="first_name"><?= __('first_name_label') ?></label>
-                    <input type="text" id="first_name" name="first_name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="last_name"><?= __('last_name_label') ?></label>
-                    <input type="text" id="last_name" name="last_name" required>
-                </div>
+                <?php if ($currentLang === 'ja'): ?>
+                    <!-- Japanese Name Order: 姓 (Family) first, 名 (Given) second -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div class="form-group">
+                            <label for="last_name"><?= __('last_name_label') ?></label>
+                            <input type="text" id="last_name" name="last_name" placeholder="山田" value="<?= htmlspecialchars((string)($_POST['last_name'] ?? '')) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="first_name"><?= __('first_name_label') ?></label>
+                            <input type="text" id="first_name" name="first_name" placeholder="太郎" value="<?= htmlspecialchars((string)($_POST['first_name'] ?? '')) ?>" required>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <!-- English Name Order: First Name first, Last Name second -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div class="form-group">
+                            <label for="first_name"><?= __('first_name_label') ?></label>
+                            <input type="text" id="first_name" name="first_name" placeholder="John" value="<?= htmlspecialchars((string)($_POST['first_name'] ?? '')) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="last_name"><?= __('last_name_label') ?></label>
+                            <input type="text" id="last_name" name="last_name" placeholder="Smith" value="<?= htmlspecialchars((string)($_POST['last_name'] ?? '')) ?>" required>
+                        </div>
+                    </div>
+                <?php endif; ?>
                 
                 <div class="form-group">
                     <label for="email"><?= __('email_label') ?></label>
-                    <input type="email" id="email" name="email" required>
+                    <input type="email" id="email" name="email" value="<?= htmlspecialchars((string)($_POST['email'] ?? '')) ?>" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="phone"><?= __('phone_label') ?></label>
-                    <input type="tel" id="phone" name="phone">
+                    <input type="tel" id="phone" name="phone" value="<?= htmlspecialchars((string)($_POST['phone'] ?? '')) ?>">
                 </div>
                 
                 <div class="form-group">
                     <label for="password"><?= __('password_label') ?></label>
                     <input type="password" id="password" name="password" minlength="6" required>
-                    <div class="password-strength">6文字以上</div>
+                    <div class="password-strength"><?= htmlspecialchars((string)(__('password_min_length_hint') !== 'password_min_length_hint' ? __('password_min_length_hint') : '6文字以上 / min. 6 characters'), ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
                 
                 <div class="form-group">

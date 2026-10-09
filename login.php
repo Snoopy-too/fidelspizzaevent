@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $db = getDB();
-            $stmt = $db->prepare("SELECT id, password_hash, first_name, is_confirmed FROM users WHERE email = ?");
+            $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
             
@@ -32,6 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Set session
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['user_name'] = $user['first_name'];
+                    
+                    // Restore preferred language if saved in user profile
+                    if (!empty($user['preferred_lang']) && in_array($user['preferred_lang'], ['ja', 'en'], true)) {
+                        $_SESSION['lang'] = $user['preferred_lang'];
+                    }
                     
                     // Create session record
                     $session_id = session_id();
@@ -205,6 +210,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <div class="container">
+        <!-- Language Switcher -->
+        <?php $currentLang = (string)($_SESSION['lang'] ?? 'ja'); ?>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <a href="?lang=<?= $currentLang === 'ja' ? 'en' : 'ja' ?>" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 0.88em; font-weight: 700; text-decoration: none; color: #4b5563; background: #f3f4f6; border: 1px solid #d1d5db; transition: all 0.2s ease;">
+                🌐 <?= $currentLang === 'ja' ? 'English' : '日本語' ?>
+            </a>
+        </div>
+
         <div class="pizza-icon">🍕</div>
         <h1><?= __('welcome_back') ?></h1>
         

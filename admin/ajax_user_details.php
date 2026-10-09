@@ -33,11 +33,7 @@ try {
     $db = getDB();
 
     // Fetch user details
-    $stmt = $db->prepare("
-        SELECT id, first_name, last_name, email, phone, is_confirmed, accepts_marketing, created_at
-        FROM users
-        WHERE id = ?
-    ");
+    $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -85,6 +81,7 @@ try {
             'phone'             => (string)($user['phone'] ?? ''),
             'is_confirmed'      => (int)$user['is_confirmed'] === 1,
             'accepts_marketing' => (int)($user['accepts_marketing'] ?? 1) === 1,
+            'preferred_lang'    => (string)($user['preferred_lang'] ?? 'ja'),
             'created_at'        => !empty($user['created_at']) ? date('Y/m/d H:i', strtotime((string)$user['created_at'])) : '-'
         ],
         'orders' => $orders

@@ -51,6 +51,13 @@ require_once __DIR__ . '/includes/header.php';
                         <span class="status-badge status-pending"><?= htmlspecialchars((string)__('pending'), ENT_QUOTES, 'UTF-8') ?></span>
                     <?php endif; ?>
                 </p>
+                <p><strong><?= htmlspecialchars((string)__('preferred_language'), ENT_QUOTES, 'UTF-8') ?>:</strong>
+                    <?php if (($user['preferred_lang'] ?? 'ja') === 'en'): ?>
+                        <span class="status-badge" style="background:#e0f2fe; color:#0369a1; font-weight:700;">🇺🇸 English</span>
+                    <?php else: ?>
+                        <span class="status-badge" style="background:#fef3c7; color:#92400e; font-weight:700;">🇯🇵 日本語</span>
+                    <?php endif; ?>
+                </p>
                 <p><strong><?= htmlspecialchars((string)__('registration_date'), ENT_QUOTES, 'UTF-8') ?>:</strong> <?= date('Y/m/d H:i', strtotime((string)$user['created_at'])) ?></p>
             </div>
 
