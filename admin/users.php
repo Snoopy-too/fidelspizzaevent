@@ -254,7 +254,7 @@ require_once __DIR__ . '/includes/header.php';
          ========================================================================== -->
     <div class="modal-backdrop" id="userPasswordModal">
         <div class="modal-dialog modal-dialog-sm">
-            <form method="POST" action="edit_user.php" id="changePasswordForm" autocomplete="off">
+            <form method="POST" action="edit_user.php" id="changePasswordForm" autocomplete="off" style="display: flex; flex-direction: column; max-height: 100%; min-height: 0; flex: 1 1 auto; overflow: hidden; width: 100%;">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)getCsrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="return_to" value="users.php">
                 <input type="hidden" name="admin_change_password" value="1">
@@ -264,7 +264,7 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>🔑 <?= htmlspecialchars((string)__('change_customer_password_title'), ENT_QUOTES, 'UTF-8') ?></h3>
                     <button type="button" class="modal-close" onclick="closeModal('userPasswordModal')">&times;</button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-y: auto; flex: 1 1 auto; min-height: 0;">
                     <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 14px; color: #166534;">
                         <div style="font-weight: bold; font-size: 1rem;">👤 <span id="pwdUserName">-</span></div>
                         <div style="font-size: 0.88rem; color: #15803d; margin-top: 2px;" id="pwdUserEmail">-</div>
@@ -303,12 +303,12 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="form-group">
                         <label for="pwdConfirmPassword"><?= htmlspecialchars((string)__('confirm_new_password_label'), ENT_QUOTES, 'UTF-8') ?> *</label>
                         <input type="password"
-                               id="pwdConfirmPassword"
-                               name="confirm_password"
-                               minlength="6"
-                               autocomplete="new-password"
-                               placeholder="<?= htmlspecialchars((string)__('password_min_length_hint'), ENT_QUOTES, 'UTF-8') ?>"
-                               required>
+                                id="pwdConfirmPassword"
+                                name="confirm_password"
+                                minlength="6"
+                                autocomplete="new-password"
+                                placeholder="<?= htmlspecialchars((string)__('password_min_length_hint'), ENT_QUOTES, 'UTF-8') ?>"
+                                required>
                     </div>
 
                     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
@@ -318,7 +318,7 @@ require_once __DIR__ . '/includes/header.php';
                         </label>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="flex-shrink: 0;">
                     <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('userPasswordModal')"><?= __('cancel') ?></button>
                     <button type="submit" class="modal-btn modal-btn-primary"><?= htmlspecialchars((string)__('update_password_btn'), ENT_QUOTES, 'UTF-8') ?></button>
                 </div>
@@ -331,7 +331,9 @@ require_once __DIR__ . '/includes/header.php';
          ========================================================================== -->
     <div class="modal-backdrop" id="userEditModal">
         <div class="modal-dialog">
-            <form method="POST" action="edit_user.php" id="editUserForm">
+            <form method="POST" action="edit_user.php" id="editUserForm" style="display: flex; flex-direction: column; max-height: 100%; min-height: 0; flex: 1 1 auto; overflow: hidden; width: 100%;">
+                <!-- Default submit button to ensure Enter key saves user changes instead of triggering reset email -->
+                <button type="submit" style="display: none;" tabindex="-1" aria-hidden="true"></button>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)getCsrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="return_to" value="users.php">
                 <input type="hidden" name="id" id="editUserId" value="">
@@ -340,7 +342,7 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>✏️ <?= __('edit_user_title') ?></h3>
                     <button type="button" class="modal-close" onclick="closeModal('userEditModal')">&times;</button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-y: auto; flex: 1 1 auto; min-height: 0;">
                     <div class="modal-form-grid">
                         <div class="form-group">
                             <label for="editFirstName"><?= __('first_name') ?> *</label>
@@ -352,14 +354,15 @@ require_once __DIR__ . '/includes/header.php';
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="editEmail"><?= __('email') ?> *</label>
-                        <input type="email" id="editEmail" name="email" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="editPhone"><?= __('phone') ?></label>
-                        <input type="text" id="editPhone" name="phone">
+                    <div class="modal-form-grid">
+                        <div class="form-group">
+                            <label for="editEmail"><?= __('email') ?> *</label>
+                            <input type="email" id="editEmail" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editPhone"><?= __('phone') ?></label>
+                            <input type="text" id="editPhone" name="phone">
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -381,7 +384,7 @@ require_once __DIR__ . '/includes/header.php';
                         <small style="color: #64748b; display: block; margin-top: 4px;"><?= htmlspecialchars((string)__('leave_blank_keep_password'), ENT_QUOTES, 'UTF-8') ?></small>
                     </div>
 
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; margin-top: 5px;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 5px;">
                         <label style="margin: 0; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="editIsConfirmed" name="is_confirmed" style="width: 18px; height: 18px; cursor: pointer;">
                             <?= __('email_confirmed') ?>
@@ -392,12 +395,12 @@ require_once __DIR__ . '/includes/header.php';
                         </label>
                     </div>
                 </div>
-                <div class="modal-footer" style="flex-wrap: wrap; gap: 8px;">
+                <div class="modal-footer" style="flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
                     <button type="submit" name="send_reset_email" value="1" class="modal-btn modal-btn-cancel" style="margin-right: auto;" formnovalidate>
                         <?= htmlspecialchars((string)__('send_password_reset_email_btn'), ENT_QUOTES, 'UTF-8') ?>
                     </button>
                     <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('userEditModal')"><?= __('cancel') ?></button>
-                    <button type="submit" class="modal-btn modal-btn-primary">💾 <?= __('save_user') ?></button>
+                    <button type="submit" name="save_user" class="modal-btn modal-btn-primary" style="font-weight: 700;">💾 <?= __('save_user') ?></button>
                 </div>
             </form>
         </div>
@@ -408,7 +411,7 @@ require_once __DIR__ . '/includes/header.php';
          ========================================================================== -->
     <div class="modal-backdrop" id="userDeleteModal">
         <div class="modal-dialog modal-dialog-sm">
-            <form method="POST" action="delete_user.php" id="deleteUserForm">
+            <form method="POST" action="delete_user.php" id="deleteUserForm" style="display: flex; flex-direction: column; max-height: 100%; min-height: 0; flex: 1 1 auto; overflow: hidden; width: 100%;">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)getCsrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="id" id="deleteUserId" value="">
 
@@ -416,7 +419,7 @@ require_once __DIR__ . '/includes/header.php';
                     <h3 style="color: #b91c1c;">⚠️ <?= __('confirm_delete_user') ?></h3>
                     <button type="button" class="modal-close" onclick="closeModal('userDeleteModal')">&times;</button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-y: auto; flex: 1 1 auto; min-height: 0;">
                     <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px 16px; color: #991b1b; display: flex; flex-direction: column; gap: 8px;">
                         <p style="font-size: 1rem; margin: 0;">
                             <?= __('confirm_delete_user') ?>
@@ -430,7 +433,7 @@ require_once __DIR__ . '/includes/header.php';
                         ⚠️ This action will permanently remove the user and cannot be undone.
                     </p>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="flex-shrink: 0;">
                     <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('userDeleteModal')"><?= __('cancel') ?></button>
                     <button type="submit" class="modal-btn modal-btn-danger">🗑️ <?= __('delete_user') ?></button>
                 </div>
@@ -443,7 +446,7 @@ require_once __DIR__ . '/includes/header.php';
          ========================================================================== -->
     <div class="modal-backdrop" id="userAddModal">
         <div class="modal-dialog">
-            <form method="POST" action="add_user.php" id="addUserForm">
+            <form method="POST" action="add_user.php" id="addUserForm" style="display: flex; flex-direction: column; max-height: 100%; min-height: 0; flex: 1 1 auto; overflow: hidden; width: 100%;">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)getCsrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="return_to" value="users.php">
 
@@ -451,7 +454,7 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>➕ <?= __('add_user_title') ?></h3>
                     <button type="button" class="modal-close" onclick="closeModal('userAddModal')">&times;</button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-y: auto; flex: 1 1 auto; min-height: 0;">
                     <div class="modal-form-grid">
                         <div class="form-group">
                             <label for="addFirstName"><?= __('first_name') ?> *</label>
@@ -479,7 +482,7 @@ require_once __DIR__ . '/includes/header.php';
                         <input type="password" id="addPassword" name="password" minlength="6" required>
                     </div>
 
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; margin-top: 5px;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 5px;">
                         <label style="margin: 0; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="addIsConfirmed" name="is_confirmed" checked style="width: 18px; height: 18px; cursor: pointer;">
                             <?= __('email_confirmed') ?>
@@ -490,7 +493,7 @@ require_once __DIR__ . '/includes/header.php';
                         </label>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="flex-shrink: 0;">
                     <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('userAddModal')"><?= __('cancel') ?></button>
                     <button type="submit" class="modal-btn modal-btn-success">➕ <?= __('save_user') ?></button>
                 </div>
