@@ -158,15 +158,15 @@ if ($filter_pickup_time !== '' && $filter_pickup_time !== '__none__') {
 
 // Build distinct pickup times map for filter dropdown and display lookup
 // Exclude past events: only include pickup times on or after the current event date,
-// or unscheduled current event buffer orders (pickup_time IS NULL and not completed/archived/cancelled)
+// or unscheduled current event buffer orders (pickup_time IS NULL and not completed/archived/completed)
 $ptStmt = $db->prepare("
     SELECT 
         o.pickup_time,
-        o.pickup_slot_id,
+        MAX(o.pickup_slot_id) AS pickup_slot_id,
         COUNT(DISTINCT o.id) as order_count
     FROM orders o
     WHERE (DATE(o.pickup_time) >= ? OR (o.pickup_time IS NULL AND o.status NOT IN ('cancelled', 'archived', 'completed')))
-    GROUP BY o.pickup_time, o.pickup_slot_id
+    GROUP BY o.pickup_time
     ORDER BY o.pickup_time ASC
 ");
 $ptStmt->execute([$currentEventDate]);
@@ -192,6 +192,9 @@ foreach ($pickupTimeRows as $ptRow) {
         ];
     }
     $available_pickup_times[$key]['count'] += $count;
+    if ($slotId !== null && empty($available_pickup_times[$key]['slot_id'])) {
+        $available_pickup_times[$key]['slot_id'] = $slotId;
+    }
 }
 
 // Also ensure configured slots for current event are available in dropdown
@@ -328,14 +331,14 @@ $summary_where = !empty($summary_conditions) ? 'WHERE ' . implode(' AND ', $summ
 $summary_stmt = $db->prepare("
     SELECT 
         o.pickup_time,
-        o.pickup_slot_id,
+        MAX(o.pickup_slot_id) AS pickup_slot_id,
         mi.name AS pizza_name,
         SUM(oi.quantity) AS total_quantity
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
     JOIN menu_items mi ON oi.menu_item_id = mi.id
     $summary_where
-    GROUP BY o.pickup_time, o.pickup_slot_id, mi.name
+    GROUP BY o.pickup_time, mi.name
     ORDER BY o.pickup_time ASC, mi.name ASC
 ");
 $summary_stmt->execute($summary_params);
@@ -355,9 +358,9 @@ $pickup_slots_map = [];
 foreach ($pickup_data as $row) {
     $timeKey = $row['pickup_time'] !== null ? (string)$row['pickup_time'] : '__none__';
     $pName = (string)$row['pizza_name'];
-    $pickup_orders[$timeKey][$pName] = (int)$row['total_quantity'];
+    $pickup_orders[$timeKey][$pName] = ($pickup_orders[$timeKey][$pName] ?? 0) + (int)$row['total_quantity'];
     $pizza_types_map[$pName] = true;
-    if (!empty($row['pickup_slot_id'])) {
+    if (!empty($row['pickup_slot_id']) && empty($pickup_slots_map[$timeKey])) {
         $pickup_slots_map[$timeKey] = (int)$row['pickup_slot_id'];
     }
 }

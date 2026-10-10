@@ -69,6 +69,14 @@ try {
         $stmt->execute();
     }
 
+    // 4. Backfill pickup_slot_id for older orders where pickup_time matches a slot
+    $db->exec("
+        UPDATE `orders` o
+        JOIN `pickup_time_slots` pts ON pts.slot_time = TIME(o.pickup_time)
+        SET o.pickup_slot_id = pts.id
+        WHERE o.pickup_slot_id IS NULL AND o.pickup_time IS NOT NULL
+    ");
+
     echo "Migration for 'pickup_time_slots' (with start & end time) and 'orders.pickup_slot_id' completed successfully.\n";
 } catch (\Throwable $e) {
     echo "Migration failed: " . $e->getMessage() . "\n";
