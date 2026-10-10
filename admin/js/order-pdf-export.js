@@ -55,8 +55,8 @@
             const email = cloneSmall ? cloneSmall.textContent.trim() : '';
             if (cloneSmall) cloneSmall.remove();
             const name = clone.textContent.trim();
-            const nameSize = isLandscape ? '8.5px' : '7.5px';
-            const emailSize = isLandscape ? '7.5px' : '6.5px';
+            const nameSize = isLandscape ? '11px' : '10px';
+            const emailSize = isLandscape ? '9px' : '8.5px';
             return `<div style="font-weight: 600; color: #2c3e50; font-size: ${nameSize}; word-break: break-word;">${escapeHtml(name)}</div><div style="font-size: ${emailSize}; color: #7f8c8d; word-break: break-all;">${escapeHtml(email)}</div>`;
         }
 
@@ -185,10 +185,10 @@
             filterHtml = `<div><strong>${escapeHtml(labelFilters)}:</strong> ${escapeHtml(filterInfo)}</div>`;
         }
 
-        const thPadding = isLandscape ? '5px 5px' : '4px 3px';
-        const thFontSize = isLandscape ? '9px' : '7.5px';
-        const tdPadding = isLandscape ? '5px 5px' : '4px 3px';
-        const tdFontSize = isLandscape ? '8.5px' : '7.5px';
+        const thPadding = isLandscape ? '6px 6px' : '5.5px 5px';
+        const thFontSize = isLandscape ? '11px' : '9.5px';
+        const tdPadding = isLandscape ? '6px 6px' : '5.5px 5px';
+        const tdFontSize = isLandscape ? '10.5px' : '9.5px';
 
         let colgroupHtml = '<colgroup>';
         let tableHeaderHtml = '<tr>';
@@ -198,7 +198,7 @@
             const align = isAmount ? 'right' : (isStatus ? 'center' : 'left');
             const colWidth = getColumnWidth(col.title, includedCols.length);
             colgroupHtml += `<col style="width: ${colWidth};">`;
-            tableHeaderHtml += `<th style="width: ${colWidth}; text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: #2c3e50; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; box-sizing: border-box; word-break: break-word; line-height: 1.15;">${escapeHtml(col.title)}</th>`;
+            tableHeaderHtml += `<th style="width: ${colWidth}; text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: #2c3e50; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; box-sizing: border-box; word-break: break-word; line-height: 1.2;">${escapeHtml(col.title)}</th>`;
         });
         colgroupHtml += '</colgroup>';
         tableHeaderHtml += '</tr>';
@@ -212,7 +212,7 @@
                 const colWidth = getColumnWidth(colTitle, includedCols.length);
                 const align = cell.isAmount ? 'right' : (cell.isStatus ? 'center' : 'left');
                 const weight = cell.isOrderNum ? 'font-weight: 600;' : '';
-                tableBodyHtml += `<td style="width: ${colWidth}; text-align: ${align}; ${weight} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; vertical-align: top; word-break: break-word; overflow-wrap: break-word; line-height: 1.25; box-sizing: border-box;">${cell.content}</td>`;
+                tableBodyHtml += `<td style="width: ${colWidth}; text-align: ${align}; ${weight} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; vertical-align: top; word-break: break-word; overflow-wrap: break-word; line-height: 1.3; box-sizing: border-box;">${cell.content}</td>`;
             });
             tableBodyHtml += '</tr>';
         });
@@ -289,7 +289,7 @@
                 const align = idx === 0 ? 'left' : 'right';
                 const bg = col.isTotal ? '#1a252f' : '#2c3e50';
                 sumColgroupHtml += `<col style="width: ${w};">`;
-                sumTheadHtml += `<th style="width: ${w}; text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: ${bg}; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; box-sizing: border-box; line-height: 1.15;">${escapeHtml(col.title)}</th>`;
+                sumTheadHtml += `<th style="width: ${w}; text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: ${bg}; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; box-sizing: border-box; line-height: 1.2;">${escapeHtml(col.title)}</th>`;
             });
             sumColgroupHtml += '</colgroup>';
             sumTheadHtml += '</tr>';
@@ -306,7 +306,7 @@
                     const align = cell.isNumeric ? 'right' : 'left';
                     const weight = (cell.isFirst || cell.isTotal) ? 'font-weight: bold;' : '';
                     const cellBg = cell.isTotal ? 'background-color: #f0f7fb;' : '';
-                    sumTbodyHtml += `<td style="text-align: ${align}; ${weight} ${cellBg} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; word-break: break-word; line-height: 1.25; box-sizing: border-box;">${cell.content}</td>`;
+                    sumTbodyHtml += `<td style="text-align: ${align}; ${weight} ${cellBg} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; word-break: break-word; line-height: 1.3; box-sizing: border-box;">${cell.content}</td>`;
                 });
                 sumTbodyHtml += '</tr>';
             });
@@ -318,7 +318,7 @@
                     fr.forEach(cell => {
                         const align = cell.isNumeric ? 'right' : 'left';
                         const cellBg = cell.isTotal ? 'background-color: #d5dbdb; color: #1a252f;' : '';
-                        sumTfootHtml += `<td style="text-align: ${align}; font-weight: bold; ${cellBg} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #bdc3c7; line-height: 1.25; box-sizing: border-box;">${cell.content}</td>`;
+                        sumTfootHtml += `<td style="text-align: ${align}; font-weight: bold; ${cellBg} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #bdc3c7; line-height: 1.3; box-sizing: border-box;">${cell.content}</td>`;
                     });
                     sumTfootHtml += '</tr>';
                 });
@@ -326,7 +326,7 @@
 
             summarySectionHtml = `
                 <div style="margin-bottom: 12px; page-break-inside: avoid;">
-                    <div style="font-size: 10px; font-weight: bold; color: #2c3e50; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1.5px solid #2c3e50; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 11.5px; font-weight: bold; color: #2c3e50; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1.5px solid #2c3e50; display: flex; justify-content: space-between; align-items: center;">
                         <span>📦 ${escapeHtml(summaryTitle)}</span>
                     </div>
                     <table style="width: 100%; table-layout: fixed; border-collapse: collapse; box-sizing: border-box;">
@@ -341,20 +341,21 @@
 
         const ordersListTitle = btn.getAttribute('data-orders-title') || reportTitle;
         const ordersListHeader = summaryTable
-            ? `<div style="font-size: 10px; font-weight: bold; color: #2c3e50; margin-top: 8px; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1.5px solid #2c3e50;">📋 ${escapeHtml(ordersListTitle)}</div>`
+            ? `<div style="font-size: 11.5px; font-weight: bold; color: #2c3e50; margin-top: 10px; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1.5px solid #2c3e50;">📋 ${escapeHtml(ordersListTitle)}</div>`
             : '';
 
         exportContainer.innerHTML = `
             <style>
                 .pdf-status-badge {
                     display: inline-block;
-                    padding: 1px ${isLandscape ? '4px' : '2px'};
-                    border-radius: 2px;
-                    font-size: ${isLandscape ? '7.5px' : '6.5px'};
+                    padding: 2px ${isLandscape ? '5px' : '4px'};
+                    border-radius: 3px;
+                    font-size: ${isLandscape ? '9px' : '8px'};
                     font-weight: bold;
                     text-transform: uppercase;
                     text-align: center;
                     white-space: nowrap;
+                    letter-spacing: 0.3px;
                 }
                 .pdf-status-pending { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
                 .pdf-status-confirmed { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -366,15 +367,15 @@
             </style>
             <div style="border-bottom: 2px solid #2c3e50; padding-bottom: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end; width: 100%; box-sizing: border-box;">
                 <div>
-                    <h1 style="margin: 0 0 2px 0; font-size: 15px; color: #2c3e50; font-weight: bold;">🍕 ${escapeHtml(siteTitle)}</h1>
-                    <div style="font-size: 12px; font-weight: bold; color: #34495e;">${escapeHtml(reportTitle)}</div>
+                    <h1 style="margin: 0 0 2px 0; font-size: 16px; color: #2c3e50; font-weight: bold;">🍕 ${escapeHtml(siteTitle)}</h1>
+                    <div style="font-size: 13px; font-weight: bold; color: #34495e;">${escapeHtml(reportTitle)}</div>
                 </div>
-                <div style="text-align: right; font-size: 8px; color: #555; white-space: nowrap; line-height: 1.35; padding-right: 2px;">
+                <div style="text-align: right; font-size: 9px; color: #555; white-space: nowrap; line-height: 1.35; padding-right: 2px;">
                     <div><strong>${escapeHtml(labelGeneratedAt)}:</strong> ${escapeHtml(timestampFormatted)}</div>
                     <div><strong>${escapeHtml(labelTotalRecords)}:</strong> ${escapeHtml(recordCountText)}</div>
                 </div>
             </div>
-            ${filterHtml ? `<div style="font-size: 8px; color: #555; margin-bottom: 6px; padding: 4px 6px; background: #edf2f7; border-radius: 3px; width: 100%; box-sizing: border-box; word-break: break-word;">${filterHtml}</div>` : ''}
+            ${filterHtml ? `<div style="font-size: 9px; color: #444; margin-bottom: 8px; padding: 5px 8px; background: #edf2f7; border-radius: 3px; width: 100%; box-sizing: border-box; word-break: break-word;">${filterHtml}</div>` : ''}
             ${summarySectionHtml}
             ${ordersListHeader}
             <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 3px; box-sizing: border-box;">
@@ -386,7 +387,7 @@
                     ${tableBodyHtml}
                 </tbody>
             </table>
-            <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #e2e8f0; font-size: 7.5px; color: #888; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+            <div style="margin-top: 10px; padding-top: 5px; border-top: 1px solid #e2e8f0; font-size: 8.5px; color: #888; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
                 <span>${escapeHtml(siteTitle)} &bull; ${escapeHtml(reportTitle)}</span>
                 <span style="white-space: nowrap; padding-right: 2px;">${escapeHtml(timestampFormatted)}</span>
             </div>
