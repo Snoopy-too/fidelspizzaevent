@@ -217,6 +217,133 @@
             tableBodyHtml += '</tr>';
         });
 
+        // Optional summary table (e.g. pickup schedule summary with pizza quantities)
+        const summaryTableId = btn.getAttribute('data-summary-table-id');
+        const summaryTable = summaryTableId ? document.getElementById(summaryTableId) : null;
+        let summarySectionHtml = '';
+
+        if (summaryTable) {
+            const summaryTitle = btn.getAttribute('data-summary-title') || 'Pickup Schedule Summary';
+            const sumHeaderThs = Array.from(summaryTable.querySelectorAll('thead tr th'));
+            const sumCols = sumHeaderThs.map((th, idx) => ({
+                index: idx,
+                title: th.textContent.trim(),
+                isFirst: idx === 0,
+                isTotal: idx === sumHeaderThs.length - 1 || /total|合計/i.test(th.textContent)
+            }));
+
+            const sumRowNodes = Array.from(summaryTable.querySelectorAll('tbody tr'));
+            const sumRowsData = [];
+            sumRowNodes.forEach(tr => {
+                const firstCell = tr.querySelector('td');
+                if (firstCell && firstCell.getAttribute('colspan')) {
+                    sumRowsData.push([{ content: firstCell.textContent.trim(), isColspan: true, colspan: sumCols.length }]);
+                    return;
+                }
+                const cells = tr.querySelectorAll('td');
+                if (cells.length === 0) return;
+                const rowCells = [];
+                sumCols.forEach(col => {
+                    const c = cells[col.index];
+                    let text = c ? c.textContent.trim() : '';
+                    if (col.isFirst) {
+                        text = text.replace(/^[✓\s]+/, '').replace(/[\s🔍]+$/, '').trim();
+                    }
+                    rowCells.push({
+                        content: escapeHtml(text),
+                        isNumeric: !col.isFirst,
+                        isTotal: col.isTotal,
+                        isFirst: col.isFirst
+                    });
+                });
+                sumRowsData.push(rowCells);
+            });
+
+            const sumFootRows = Array.from(summaryTable.querySelectorAll('tfoot tr'));
+            const sumFootData = [];
+            sumFootRows.forEach(tr => {
+                const cells = tr.querySelectorAll('td, th');
+                if (cells.length === 0) return;
+                const footCells = [];
+                sumCols.forEach(col => {
+                    const c = cells[col.index];
+                    const text = c ? c.textContent.trim() : '';
+                    footCells.push({
+                        content: escapeHtml(text),
+                        isNumeric: !col.isFirst,
+                        isTotal: col.isTotal,
+                        isFirst: col.isFirst
+                    });
+                });
+                sumFootData.push(footCells);
+            });
+
+            const timeColWidth = isLandscape ? 30 : 34;
+            const remainingCols = Math.max(1, sumCols.length - 1);
+            const otherColWidth = ((100 - timeColWidth) / remainingCols).toFixed(1);
+
+            let sumColgroupHtml = '<colgroup>';
+            let sumTheadHtml = '<tr>';
+            sumCols.forEach((col, idx) => {
+                const w = idx === 0 ? `${timeColWidth}%` : `${otherColWidth}%`;
+                const align = idx === 0 ? 'left' : 'right';
+                const bg = col.isTotal ? '#1a252f' : '#2c3e50';
+                sumColgroupHtml += `<col style="width: ${w};">`;
+                sumTheadHtml += `<th style="width: ${w}; text-align: ${align}; padding: ${thPadding}; font-size: ${thFontSize}; background-color: ${bg}; color: #ffffff; border: 1px solid #1a252f; font-weight: bold; box-sizing: border-box; line-height: 1.15;">${escapeHtml(col.title)}</th>`;
+            });
+            sumColgroupHtml += '</colgroup>';
+            sumTheadHtml += '</tr>';
+
+            let sumTbodyHtml = '';
+            sumRowsData.forEach((r, rIdx) => {
+                if (r[0] && r[0].isColspan) {
+                    sumTbodyHtml += `<tr><td colspan="${r[0].colspan}" style="text-align: center; padding: 6px; font-size: ${tdFontSize}; color: #888; border: 1px solid #dcdcdc;">${r[0].content}</td></tr>`;
+                    return;
+                }
+                const bg = rIdx % 2 === 0 ? '#ffffff' : '#f8f9fa';
+                sumTbodyHtml += `<tr style="background-color: ${bg}; page-break-inside: avoid;">`;
+                r.forEach(cell => {
+                    const align = cell.isNumeric ? 'right' : 'left';
+                    const weight = (cell.isFirst || cell.isTotal) ? 'font-weight: bold;' : '';
+                    const cellBg = cell.isTotal ? 'background-color: #f0f7fb;' : '';
+                    sumTbodyHtml += `<td style="text-align: ${align}; ${weight} ${cellBg} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #dcdcdc; word-break: break-word; line-height: 1.25; box-sizing: border-box;">${cell.content}</td>`;
+                });
+                sumTbodyHtml += '</tr>';
+            });
+
+            let sumTfootHtml = '';
+            if (sumFootData.length > 0) {
+                sumFootData.forEach(fr => {
+                    sumTfootHtml += `<tr style="background-color: #eaeded; font-weight: bold; border-top: 2px solid #2c3e50; page-break-inside: avoid;">`;
+                    fr.forEach(cell => {
+                        const align = cell.isNumeric ? 'right' : 'left';
+                        const cellBg = cell.isTotal ? 'background-color: #d5dbdb; color: #1a252f;' : '';
+                        sumTfootHtml += `<td style="text-align: ${align}; font-weight: bold; ${cellBg} padding: ${tdPadding}; font-size: ${tdFontSize}; border: 1px solid #bdc3c7; line-height: 1.25; box-sizing: border-box;">${cell.content}</td>`;
+                    });
+                    sumTfootHtml += '</tr>';
+                });
+            }
+
+            summarySectionHtml = `
+                <div style="margin-bottom: 12px; page-break-inside: avoid;">
+                    <div style="font-size: 10px; font-weight: bold; color: #2c3e50; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1.5px solid #2c3e50; display: flex; justify-content: space-between; align-items: center;">
+                        <span>📦 ${escapeHtml(summaryTitle)}</span>
+                    </div>
+                    <table style="width: 100%; table-layout: fixed; border-collapse: collapse; box-sizing: border-box;">
+                        ${sumColgroupHtml}
+                        <thead>${sumTheadHtml}</thead>
+                        <tbody>${sumTbodyHtml}</tbody>
+                        ${sumTfootHtml ? `<tfoot>${sumTfootHtml}</tfoot>` : ''}
+                    </table>
+                </div>
+            `;
+        }
+
+        const ordersListTitle = btn.getAttribute('data-orders-title') || reportTitle;
+        const ordersListHeader = summaryTable
+            ? `<div style="font-size: 10px; font-weight: bold; color: #2c3e50; margin-top: 8px; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1.5px solid #2c3e50;">📋 ${escapeHtml(ordersListTitle)}</div>`
+            : '';
+
         exportContainer.innerHTML = `
             <style>
                 .pdf-status-badge {
@@ -248,6 +375,8 @@
                 </div>
             </div>
             ${filterHtml ? `<div style="font-size: 8px; color: #555; margin-bottom: 6px; padding: 4px 6px; background: #edf2f7; border-radius: 3px; width: 100%; box-sizing: border-box; word-break: break-word;">${filterHtml}</div>` : ''}
+            ${summarySectionHtml}
+            ${ordersListHeader}
             <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 3px; box-sizing: border-box;">
                 ${colgroupHtml}
                 <thead>

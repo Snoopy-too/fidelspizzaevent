@@ -39,16 +39,17 @@ function formatAdminPickupDisplay(?string $pickupDatetime, ?int $slotId, array $
     return date('Y/m/d', $ts) . ' ' . $timeRange;
 }
 
-function getOrdersSortUrl(string $column, string $activeSort, string $activeOrder, string $status, string $search): string {
+function getOrdersSortUrl(string $column, string $activeSort, string $activeOrder, string $status, string $search, string $pickupTime = ''): string {
     $nextOrder = ($activeSort === $column && $activeOrder === 'ASC') ? 'DESC' : 'ASC';
     if ($column === 'pickup_time' && $activeSort !== 'pickup_time') {
         $nextOrder = 'ASC';
     }
     $query = [
-        'status' => $status,
-        'search' => $search,
-        'sort'   => $column,
-        'order'  => $nextOrder,
+        'status'      => $status,
+        'pickup_time' => $pickupTime,
+        'search'      => $search,
+        'sort'        => $column,
+        'order'       => $nextOrder,
     ];
     return 'orders.php?' . http_build_query(array_filter($query, static fn($v) => $v !== ''));
 }
@@ -104,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Filtering and sorting (default to 'pending' when visiting without a status parameter)
 $filter_status = isset($_GET['status']) ? (string)$_GET['status'] : 'pending';
+$filter_pickup_time = isset($_GET['pickup_time']) ? trim((string)$_GET['pickup_time']) : '';
 $search = (string)($_GET['search'] ?? '');
 
 $raw_sort = (string)($_GET['sort'] ?? 'created_at');
@@ -126,6 +128,66 @@ if ($raw_sort === 'pickup_time_desc') {
     $sort_order = $raw_order ?? 'DESC';
 }
 
+// Build distinct pickup times map for filter dropdown and display lookup
+$ptStmt = $db->query("
+    SELECT 
+        o.pickup_time,
+        o.pickup_slot_id,
+        COUNT(DISTINCT o.id) as order_count
+    FROM orders o
+    GROUP BY o.pickup_time, o.pickup_slot_id
+    ORDER BY o.pickup_time ASC
+");
+$pickupTimeRows = $ptStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$available_pickup_times = [];
+foreach ($pickupTimeRows as $ptRow) {
+    $rawPt = $ptRow['pickup_time'];
+    $slotId = !empty($ptRow['pickup_slot_id']) ? (int)$ptRow['pickup_slot_id'] : null;
+    $count = (int)$ptRow['order_count'];
+    if ($rawPt === null || trim((string)$rawPt) === '') {
+        $key = '__none__';
+        $label = __('comped_pickup_slot_none') ?: 'Unscheduled / Buffer';
+    } else {
+        $key = (string)$rawPt;
+        $label = formatAdminPickupDisplay($key, $slotId, $slotsById, $slotsByStartTime);
+    }
+    if (!isset($available_pickup_times[$key])) {
+        $available_pickup_times[$key] = [
+            'label'   => $label,
+            'count'   => 0,
+            'slot_id' => $slotId,
+        ];
+    }
+    $available_pickup_times[$key]['count'] += $count;
+}
+
+// Also ensure configured slots for current event are available in dropdown
+$currentEventDate = !empty($config['event_date']) ? (string)$config['event_date'] : date('Y-m-d');
+foreach ($allSlots as $slot) {
+    $slotDt = $slot->toDatetimeString($currentEventDate);
+    $slotLabel = formatAdminPickupDisplay($slotDt, $slot->getId(), $slotsById, $slotsByStartTime);
+    if (!isset($available_pickup_times[$slotDt])) {
+        $available_pickup_times[$slotDt] = [
+            'label'   => $slotLabel,
+            'count'   => 0,
+            'slot_id' => $slot->getId(),
+        ];
+    }
+}
+
+// Resolve display name for the active pickup time filter
+$selectedPickupTimeDisplay = '';
+if ($filter_pickup_time !== '') {
+    if (isset($available_pickup_times[$filter_pickup_time])) {
+        $selectedPickupTimeDisplay = $available_pickup_times[$filter_pickup_time]['label'];
+    } elseif ($filter_pickup_time === '__none__') {
+        $selectedPickupTimeDisplay = __('comped_pickup_slot_none') ?: 'Unscheduled / Buffer';
+    } else {
+        $selectedPickupTimeDisplay = formatAdminPickupDisplay($filter_pickup_time, null, $slotsById, $slotsByStartTime);
+    }
+}
+
 // Build query
 $where_conditions = [];
 $params = [];
@@ -133,6 +195,33 @@ $params = [];
 if ($filter_status !== '') {
     $where_conditions[] = "o.status = ?";
     $params[] = $filter_status;
+}
+
+if ($filter_pickup_time !== '') {
+    if ($filter_pickup_time === '__none__') {
+        $where_conditions[] = "o.pickup_time IS NULL";
+    } else {
+        $matchedSlotId = $available_pickup_times[$filter_pickup_time]['slot_id'] ?? null;
+        if ($matchedSlotId === null) {
+            $ts = strtotime($filter_pickup_time);
+            if ($ts !== false) {
+                $timeKey = date('H:i', $ts);
+                if (isset($slotsByStartTime[$timeKey])) {
+                    $matchedSlotId = $slotsByStartTime[$timeKey]->getId();
+                }
+            }
+        }
+        if ($matchedSlotId !== null && $matchedSlotId > 0) {
+            $where_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ? OR o.pickup_slot_id = ?)";
+            $params[] = $filter_pickup_time;
+            $params[] = substr($filter_pickup_time, 0, 16);
+            $params[] = $matchedSlotId;
+        } else {
+            $where_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ?)";
+            $params[] = $filter_pickup_time;
+            $params[] = substr($filter_pickup_time, 0, 16);
+        }
+    }
 }
 
 if ($search !== '') {
@@ -161,31 +250,83 @@ $orderByClause = match ($sort_by) {
     default        => "o.created_at $sort_order, o.id $sort_order",
 };
 
-// Get pick-up time orders summary (pending orders only)
-$stmt = $db->query("
+// Build conditions for pickup schedule summary (synchronized with status & pickup time filter)
+$summary_conditions = [];
+$summary_params = [];
+
+if ($filter_status !== '') {
+    $summary_conditions[] = "o.status = ?";
+    $summary_params[] = $filter_status;
+} else {
+    $summary_conditions[] = "o.status != 'cancelled'";
+}
+
+if ($filter_pickup_time !== '') {
+    if ($filter_pickup_time === '__none__') {
+        $summary_conditions[] = "o.pickup_time IS NULL";
+    } else {
+        $matchedSlotId = $available_pickup_times[$filter_pickup_time]['slot_id'] ?? null;
+        if ($matchedSlotId === null) {
+            $ts = strtotime($filter_pickup_time);
+            if ($ts !== false) {
+                $timeKey = date('H:i', $ts);
+                if (isset($slotsByStartTime[$timeKey])) {
+                    $matchedSlotId = $slotsByStartTime[$timeKey]->getId();
+                }
+            }
+        }
+        if ($matchedSlotId !== null && $matchedSlotId > 0) {
+            $summary_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ? OR o.pickup_slot_id = ?)";
+            $summary_params[] = $filter_pickup_time;
+            $summary_params[] = substr($filter_pickup_time, 0, 16);
+            $summary_params[] = $matchedSlotId;
+        } else {
+            $summary_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ?)";
+            $summary_params[] = $filter_pickup_time;
+            $summary_params[] = substr($filter_pickup_time, 0, 16);
+        }
+    }
+}
+
+$summary_where = !empty($summary_conditions) ? 'WHERE ' . implode(' AND ', $summary_conditions) : '';
+
+$summary_stmt = $db->prepare("
     SELECT 
         o.pickup_time,
+        o.pickup_slot_id,
         mi.name AS pizza_name,
         SUM(oi.quantity) AS total_quantity
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
     JOIN menu_items mi ON oi.menu_item_id = mi.id
-    WHERE o.status = 'pending'
-    GROUP BY o.pickup_time, mi.name
+    $summary_where
+    GROUP BY o.pickup_time, o.pickup_slot_id, mi.name
     ORDER BY o.pickup_time ASC, mi.name ASC
 ");
-$pickup_data = $stmt->fetchAll();
+$summary_stmt->execute($summary_params);
+$pickup_data = $summary_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Organize into an array for display
+// Canonical active menu items for stable column order
+$menuItemStmt = $db->query("SELECT name FROM menu_items WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
+$activeMenuNames = $menuItemStmt->fetchAll(PDO::FETCH_COLUMN);
+$pizza_types_map = [];
+foreach ($activeMenuNames as $mName) {
+    $pizza_types_map[(string)$mName] = true;
+}
+
+// Organize pickup data into an array for display
 $pickup_orders = [];
-$pizza_types = [];
+$pickup_slots_map = [];
 foreach ($pickup_data as $row) {
-    if ($row['pickup_time']) {
-        $pickup_orders[$row['pickup_time']][$row['pizza_name']] = $row['total_quantity'];
-        $pizza_types[$row['pizza_name']] = true;
+    $timeKey = $row['pickup_time'] !== null ? (string)$row['pickup_time'] : '__none__';
+    $pName = (string)$row['pizza_name'];
+    $pickup_orders[$timeKey][$pName] = (int)$row['total_quantity'];
+    $pizza_types_map[$pName] = true;
+    if (!empty($row['pickup_slot_id'])) {
+        $pickup_slots_map[$timeKey] = (int)$row['pickup_slot_id'];
     }
 }
-$pizza_types = array_keys($pizza_types);
+$pizza_types = array_keys($pizza_types_map);
 
 // Get orders
 $stmt = $db->prepare("
@@ -214,6 +355,9 @@ if ($filter_status !== '') {
 } else {
     $activeFilterParts[] = __('status') . ': ' . __('all_statuses');
 }
+if ($filter_pickup_time !== '') {
+    $activeFilterParts[] = __('pickup_time') . ': ' . $selectedPickupTimeDisplay;
+}
 if ($search !== '') {
     $activeFilterParts[] = __('search') . ': "' . $search . '"';
 }
@@ -236,35 +380,83 @@ require_once __DIR__ . '/includes/header.php';
         <?php endif; ?>
 
         <!-- PICK-UP TIME ORDERS SUMMARY TABLE -->
-        <div class="orders-table">
-            <h2 style="padding: 15px; background: #34495e; color: white; border-radius: 10px 10px 0 0;">📦 <?= htmlspecialchars((string)__('pickup_schedule_summary')) ?></h2>
-            <table class="table">
+        <div class="orders-table" style="margin-bottom: 25px;">
+            <div style="padding: 12px 15px; background: #34495e; color: white; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <h2 style="margin: 0; font-size: 1.15em; color: white;">📦 <?= htmlspecialchars((string)__('pickup_schedule_summary')) ?></h2>
+                <?php if ($filter_pickup_time !== ''): ?>
+                    <a href="<?= htmlspecialchars(getOrdersSortUrl($sort_by, $sort_by, $sort_order, $filter_status, $search, '')) ?>" 
+                       class="btn" 
+                       style="background: #e67e22; color: white; padding: 4px 10px; font-size: 0.85em; text-decoration: none; border-radius: 4px;">
+                        ✕ <?= htmlspecialchars((string)__('show_all_pickups')) ?>
+                    </a>
+                <?php endif; ?>
+            </div>
+            <table class="table" id="pickup-summary-table">
                 <thead>
                     <tr>
                         <th><?= htmlspecialchars((string)__('pickup_time')) ?></th>
                         <?php foreach ($pizza_types as $pizza): ?>
-                            <th><?= htmlspecialchars((string)$pizza) ?></th>
+                            <th style="text-align: right;"><?= htmlspecialchars((string)$pizza) ?></th>
                         <?php endforeach; ?>
+                        <th style="text-align: right; background: #2c3e50; color: #ffffff;"><?= htmlspecialchars((string)__('total_column')) ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($pickup_orders)): ?>
                         <tr>
-                            <td colspan="<?= count($pizza_types) + 1 ?>" style="text-align:center; padding: 20px; color: #999;">
+                            <td colspan="<?= count($pizza_types) + 2 ?>" style="text-align:center; padding: 20px; color: #999;">
                                 <?= htmlspecialchars((string)__('no_scheduled_pickups')) ?>
                             </td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($pickup_orders as $pickup_time => $pizzas): ?>
+                        <?php 
+                            $colTotals = array_fill_keys($pizza_types, 0);
+                            $grandTotal = 0;
+                            foreach ($pickup_orders as $pickup_time => $pizzas): 
+                                $rowTotal = 0;
+                                $slotId = $pickup_slots_map[$pickup_time] ?? null;
+                                $displayTime = ($pickup_time === '__none__')
+                                    ? (__('comped_pickup_slot_none') ?: 'Unscheduled / Buffer')
+                                    : formatAdminPickupDisplay((string)$pickup_time, $slotId, $slotsById, $slotsByStartTime);
+                        ?>
                             <tr>
-                                <td><strong><?= htmlspecialchars(formatAdminPickupDisplay((string)$pickup_time, null, $slotsById, $slotsByStartTime)) ?></strong></td>
-                                <?php foreach ($pizza_types as $pizza): ?>
-                                    <td><?= isset($pizzas[$pizza]) ? (int)$pizzas[$pizza] : 0 ?></td>
+                                <td>
+                                    <?php if ($filter_pickup_time === (string)$pickup_time): ?>
+                                        <span style="display: inline-block; background: #3498db; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold;">
+                                            ✓ <?= htmlspecialchars($displayTime) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <a href="<?= htmlspecialchars(getOrdersSortUrl($sort_by, $sort_by, $sort_order, $filter_status, $search, (string)$pickup_time)) ?>" 
+                                           style="color: #2980b9; text-decoration: none; font-weight: bold;" 
+                                           title="<?= htmlspecialchars((string)__('filter_by_pickup_time')) ?>">
+                                            <?= htmlspecialchars($displayTime) ?> 🔍
+                                        </a>
+                                    <?php endif; ?>
+                                </td>
+                                <?php foreach ($pizza_types as $pizza): 
+                                    $qty = isset($pizzas[$pizza]) ? (int)$pizzas[$pizza] : 0;
+                                    $rowTotal += $qty;
+                                    $colTotals[$pizza] += $qty;
+                                ?>
+                                    <td style="text-align: right;"><?= $qty ?></td>
                                 <?php endforeach; ?>
+                                <?php $grandTotal += $rowTotal; ?>
+                                <td style="text-align: right; font-weight: bold; background: #f0f7fb; color: #2c3e50;"><?= $rowTotal ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </tbody>
+                <?php if (!empty($pickup_orders)): ?>
+                    <tfoot>
+                        <tr style="background: #ecf0f1; font-weight: bold; border-top: 2px solid #bdc3c7;">
+                            <td><?= htmlspecialchars((string)__('total_column')) ?></td>
+                            <?php foreach ($pizza_types as $pizza): ?>
+                                <td style="text-align: right;"><?= (int)$colTotals[$pizza] ?></td>
+                            <?php endforeach; ?>
+                            <td style="text-align: right; font-weight: bold; background: #d5dbdb; color: #2c3e50;"><?= (int)$grandTotal ?></td>
+                        </tr>
+                    </tfoot>
+                <?php endif; ?>
             </table>
         </div>
 
@@ -294,6 +486,17 @@ require_once __DIR__ . '/includes/header.php';
                     <option value="" <?= $filter_status === '' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('all_statuses')) ?></option>
                     <?php foreach ($status_counts as $status => $count): ?>
                         <option value="<?= htmlspecialchars((string)$status) ?>" <?= $filter_status === (string)$status ? 'selected' : '' ?>><?= htmlspecialchars((string)__('status_' . $status)) ?> (<?= (int)$count ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><?= htmlspecialchars((string)__('filter_by_pickup_time')) ?></label>
+                <select name="pickup_time" onchange="this.form.submit()">
+                    <option value="" <?= $filter_pickup_time === '' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('all_pickup_times')) ?></option>
+                    <?php foreach ($available_pickup_times as $timeKey => $timeInfo): ?>
+                        <option value="<?= htmlspecialchars((string)$timeKey) ?>" <?= $filter_pickup_time === (string)$timeKey ? 'selected' : '' ?>>
+                            <?= htmlspecialchars((string)$timeInfo['label']) ?> (<?= (int)$timeInfo['count'] ?>)
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -351,6 +554,9 @@ require_once __DIR__ . '/includes/header.php';
                                 class="btn btn-export-pdf" 
                                 id="exportOrdersPdfBtn"
                                 data-table-id="orders-table"
+                                data-summary-table-id="pickup-summary-table"
+                                data-summary-title="<?= htmlspecialchars((string)__('pickup_schedule_summary')) ?>"
+                                data-orders-title="<?= htmlspecialchars((string)__('order_management')) ?>"
                                 data-report-title="<?= htmlspecialchars((string)__('order_management')) ?>"
                                 data-site-title="<?= htmlspecialchars((string)($config['site_title'] ?? "Fidel's Pizza Event")) ?>"
                                 data-lang="<?= htmlspecialchars((string)($currentLang ?? 'ja')) ?>"
@@ -360,7 +566,7 @@ require_once __DIR__ . '/includes/header.php';
                                 data-label-filters="<?= htmlspecialchars((string)__('pdf_active_filters')) ?>"
                                 data-filter-info="<?= htmlspecialchars((string)$activeFilterSummary) ?>"
                                 data-orientation="portrait"
-                                data-filename="orders_<?= date('Y-m-d') ?>.pdf">
+                                data-filename="<?= htmlspecialchars('orders_' . date('Y-m-d') . ($filter_pickup_time !== '' ? '_pickup_' . substr(preg_replace('/[^0-9]/', '', $filter_pickup_time), 0, 14) : '') . '.pdf') ?>">
                             📄 <?= htmlspecialchars((string)__('export_pdf')) ?>
                         </button>
                         <?php endif; ?>
@@ -371,13 +577,13 @@ require_once __DIR__ . '/includes/header.php';
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
-                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('order_number', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('order_number')) ?>"><?= htmlspecialchars((string)__('order_number')) ?><?= $sort_by === 'order_number' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
-                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('first_name', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('customer')) ?>"><?= htmlspecialchars((string)__('customer')) ?><?= $sort_by === 'first_name' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('order_number', $sort_by, $sort_order, $filter_status, $search, $filter_pickup_time)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('order_number')) ?>"><?= htmlspecialchars((string)__('order_number')) ?><?= $sort_by === 'order_number' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('first_name', $sort_by, $sort_order, $filter_status, $search, $filter_pickup_time)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('customer')) ?>"><?= htmlspecialchars((string)__('customer')) ?><?= $sort_by === 'first_name' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
                             <th><?= htmlspecialchars((string)__('notes')) ?></th>
                             <th><?= htmlspecialchars((string)__('items')) ?></th>
-                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('total_amount', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('total_amount')) ?>"><?= htmlspecialchars((string)__('total_amount')) ?><?= $sort_by === 'total_amount' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
-                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('pickup_time', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('pickup_time')) ?>"><?= htmlspecialchars((string)__('pickup_time')) ?><?= $sort_by === 'pickup_time' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
-                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('status', $sort_by, $sort_order, $filter_status, $search)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('status')) ?>"><?= htmlspecialchars((string)__('status')) ?><?= $sort_by === 'status' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('total_amount', $sort_by, $sort_order, $filter_status, $search, $filter_pickup_time)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('total_amount')) ?>"><?= htmlspecialchars((string)__('total_amount')) ?><?= $sort_by === 'total_amount' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('pickup_time', $sort_by, $sort_order, $filter_status, $search, $filter_pickup_time)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('pickup_time')) ?>"><?= htmlspecialchars((string)__('pickup_time')) ?><?= $sort_by === 'pickup_time' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
+                            <th><a href="<?= htmlspecialchars(getOrdersSortUrl('status', $sort_by, $sort_order, $filter_status, $search, $filter_pickup_time)) ?>" class="table-sort-link" title="<?= htmlspecialchars((string)__('status')) ?>"><?= htmlspecialchars((string)__('status')) ?><?= $sort_by === 'status' ? '<span class="sort-arrow">' . ($sort_order === 'ASC' ? ' ▲' : ' ▼') . '</span>' : '' ?></a></th>
                             <th><?= htmlspecialchars((string)__('actions')) ?></th>
                         </tr>
                     </thead>
