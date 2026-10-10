@@ -128,16 +128,48 @@ if ($raw_sort === 'pickup_time_desc') {
     $sort_order = $raw_order ?? 'DESC';
 }
 
+// Resolve current event date:
+// 1. From site_config if configured
+// 2. Or from the latest event date that has pending orders
+$currentEventDate = !empty($config['event_date']) ? trim((string)$config['event_date']) : '';
+
+$pendingDateStmt = $db->query("
+    SELECT DATE(pickup_time) AS event_date
+    FROM orders 
+    WHERE status = 'pending' AND pickup_time IS NOT NULL 
+    GROUP BY DATE(pickup_time)
+    ORDER BY event_date DESC 
+    LIMIT 1
+");
+$pendingRow = $pendingDateStmt ? $pendingDateStmt->fetch(PDO::FETCH_ASSOC) : null;
+$pendingEventDate = !empty($pendingRow['event_date']) ? (string)$pendingRow['event_date'] : '';
+
+if ($currentEventDate === '' || ($pendingEventDate !== '' && $currentEventDate < $pendingEventDate)) {
+    $currentEventDate = $pendingEventDate !== '' ? $pendingEventDate : date('Y-m-d');
+}
+
+// If a filter_pickup_time parameter belongs to a past event, ignore/reset it to avoid stale past-event views
+if ($filter_pickup_time !== '' && $filter_pickup_time !== '__none__') {
+    $filterTs = strtotime($filter_pickup_time);
+    if ($filterTs !== false && date('Y-m-d', $filterTs) < $currentEventDate) {
+        $filter_pickup_time = '';
+    }
+}
+
 // Build distinct pickup times map for filter dropdown and display lookup
-$ptStmt = $db->query("
+// Exclude past events: only include pickup times on or after the current event date,
+// or unscheduled current event buffer orders (pickup_time IS NULL and not completed/archived/cancelled)
+$ptStmt = $db->prepare("
     SELECT 
         o.pickup_time,
         o.pickup_slot_id,
         COUNT(DISTINCT o.id) as order_count
     FROM orders o
+    WHERE (DATE(o.pickup_time) >= ? OR (o.pickup_time IS NULL AND o.status NOT IN ('cancelled', 'archived', 'completed')))
     GROUP BY o.pickup_time, o.pickup_slot_id
     ORDER BY o.pickup_time ASC
 ");
+$ptStmt->execute([$currentEventDate]);
 $pickupTimeRows = $ptStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $available_pickup_times = [];
@@ -147,7 +179,7 @@ foreach ($pickupTimeRows as $ptRow) {
     $count = (int)$ptRow['order_count'];
     if ($rawPt === null || trim((string)$rawPt) === '') {
         $key = '__none__';
-        $label = __('comped_pickup_slot_none') ?: 'Unscheduled / Buffer';
+        $label = __('comped_pickup_slot_none') ?: 'General Event Buffer / Unscheduled';
     } else {
         $key = (string)$rawPt;
         $label = formatAdminPickupDisplay($key, $slotId, $slotsById, $slotsByStartTime);
@@ -163,7 +195,6 @@ foreach ($pickupTimeRows as $ptRow) {
 }
 
 // Also ensure configured slots for current event are available in dropdown
-$currentEventDate = !empty($config['event_date']) ? (string)$config['event_date'] : date('Y-m-d');
 foreach ($allSlots as $slot) {
     $slotDt = $slot->toDatetimeString($currentEventDate);
     $slotLabel = formatAdminPickupDisplay($slotDt, $slot->getId(), $slotsById, $slotsByStartTime);
@@ -182,7 +213,7 @@ if ($filter_pickup_time !== '') {
     if (isset($available_pickup_times[$filter_pickup_time])) {
         $selectedPickupTimeDisplay = $available_pickup_times[$filter_pickup_time]['label'];
     } elseif ($filter_pickup_time === '__none__') {
-        $selectedPickupTimeDisplay = __('comped_pickup_slot_none') ?: 'Unscheduled / Buffer';
+        $selectedPickupTimeDisplay = __('comped_pickup_slot_none') ?: 'General Event Buffer / Unscheduled';
     } else {
         $selectedPickupTimeDisplay = formatAdminPickupDisplay($filter_pickup_time, null, $slotsById, $slotsByStartTime);
     }
@@ -201,20 +232,20 @@ if ($filter_pickup_time !== '') {
     if ($filter_pickup_time === '__none__') {
         $where_conditions[] = "o.pickup_time IS NULL";
     } else {
+        $ts = strtotime($filter_pickup_time);
+        $filterDate = $ts !== false ? date('Y-m-d', $ts) : '';
         $matchedSlotId = $available_pickup_times[$filter_pickup_time]['slot_id'] ?? null;
-        if ($matchedSlotId === null) {
-            $ts = strtotime($filter_pickup_time);
-            if ($ts !== false) {
-                $timeKey = date('H:i', $ts);
-                if (isset($slotsByStartTime[$timeKey])) {
-                    $matchedSlotId = $slotsByStartTime[$timeKey]->getId();
-                }
+        if ($matchedSlotId === null && $ts !== false) {
+            $timeKey = date('H:i', $ts);
+            if (isset($slotsByStartTime[$timeKey])) {
+                $matchedSlotId = $slotsByStartTime[$timeKey]->getId();
             }
         }
-        if ($matchedSlotId !== null && $matchedSlotId > 0) {
-            $where_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ? OR o.pickup_slot_id = ?)";
+        if ($matchedSlotId !== null && $matchedSlotId > 0 && $filterDate !== '') {
+            $where_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ? OR (DATE(o.pickup_time) = ? AND o.pickup_slot_id = ?))";
             $params[] = $filter_pickup_time;
             $params[] = substr($filter_pickup_time, 0, 16);
+            $params[] = $filterDate;
             $params[] = $matchedSlotId;
         } else {
             $where_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ?)";
@@ -250,9 +281,13 @@ $orderByClause = match ($sort_by) {
     default        => "o.created_at $sort_order, o.id $sort_order",
 };
 
-// Build conditions for pickup schedule summary (synchronized with status & pickup time filter)
+// Build conditions for pickup schedule summary (synchronized with current event, status & pickup time filter)
 $summary_conditions = [];
 $summary_params = [];
+
+// Always scope summary to current event
+$summary_conditions[] = "(DATE(o.pickup_time) >= ? OR (o.pickup_time IS NULL AND o.status NOT IN ('cancelled', 'archived', 'completed')))";
+$summary_params[] = $currentEventDate;
 
 if ($filter_status !== '') {
     $summary_conditions[] = "o.status = ?";
@@ -265,20 +300,20 @@ if ($filter_pickup_time !== '') {
     if ($filter_pickup_time === '__none__') {
         $summary_conditions[] = "o.pickup_time IS NULL";
     } else {
+        $ts = strtotime($filter_pickup_time);
+        $filterDate = $ts !== false ? date('Y-m-d', $ts) : '';
         $matchedSlotId = $available_pickup_times[$filter_pickup_time]['slot_id'] ?? null;
-        if ($matchedSlotId === null) {
-            $ts = strtotime($filter_pickup_time);
-            if ($ts !== false) {
-                $timeKey = date('H:i', $ts);
-                if (isset($slotsByStartTime[$timeKey])) {
-                    $matchedSlotId = $slotsByStartTime[$timeKey]->getId();
-                }
+        if ($matchedSlotId === null && $ts !== false) {
+            $timeKey = date('H:i', $ts);
+            if (isset($slotsByStartTime[$timeKey])) {
+                $matchedSlotId = $slotsByStartTime[$timeKey]->getId();
             }
         }
-        if ($matchedSlotId !== null && $matchedSlotId > 0) {
-            $summary_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ? OR o.pickup_slot_id = ?)";
+        if ($matchedSlotId !== null && $matchedSlotId > 0 && $filterDate !== '') {
+            $summary_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ? OR (DATE(o.pickup_time) = ? AND o.pickup_slot_id = ?))";
             $summary_params[] = $filter_pickup_time;
             $summary_params[] = substr($filter_pickup_time, 0, 16);
+            $summary_params[] = $filterDate;
             $summary_params[] = $matchedSlotId;
         } else {
             $summary_conditions[] = "(o.pickup_time = ? OR DATE_FORMAT(o.pickup_time, '%Y-%m-%d %H:%i') = ?)";
@@ -495,7 +530,7 @@ require_once __DIR__ . '/includes/header.php';
                     <option value="" <?= $filter_pickup_time === '' ? 'selected' : '' ?>><?= htmlspecialchars((string)__('all_pickup_times')) ?></option>
                     <?php foreach ($available_pickup_times as $timeKey => $timeInfo): ?>
                         <option value="<?= htmlspecialchars((string)$timeKey) ?>" <?= $filter_pickup_time === (string)$timeKey ? 'selected' : '' ?>>
-                            <?= htmlspecialchars((string)$timeInfo['label']) ?> (<?= (int)$timeInfo['count'] ?>)
+                            <?= htmlspecialchars((string)$timeInfo['label']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
