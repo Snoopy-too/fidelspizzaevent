@@ -371,7 +371,7 @@ require_once __DIR__ . '/includes/header.php';
                     </span>
                     <?php endif; ?>
 
-                    <span class="badge-pill info" style="font-weight: bold;" title="Grand total of all pizzas to bake/prepare">
+                    <span class="badge-pill info" style="font-weight: bold;" title="Grand total of all pizzas for this event">
                         📦 <?= number_format($all_total_pizzas) ?> <?= __('total_pizzas_to_prep') ?>
                     </span>
 

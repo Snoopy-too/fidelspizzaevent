@@ -475,7 +475,7 @@ return [
     'comped_order_created_success' => "Comp'd pizza order #%s successfully created (%d pizzas).",
     'comped_orders_history' => "Comp'd Pizzas List",
     'no_comped_pizzas' => "No comp'd pizzas registered for this event yet.",
-    'total_pizzas_to_prep' => 'Total Pizzas to Prep',
+    'total_pizzas_to_prep' => 'Total Pizzas for Event',
     'comped_badge' => "Comp'd",
     'comped_filter' => "Comp'd",
     'quick_add_comped' => "Add Comp'd",

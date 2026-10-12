@@ -475,7 +475,7 @@ return [
     'comped_order_created_success' => '無料ピザのオーダー #%s を作成しました（計 %d 枚）。',
     'comped_orders_history' => '無料提供ピザ一覧',
     'no_comped_pizzas' => 'このイベントの無料ピザはまだ登録されていません。',
-    'total_pizzas_to_prep' => '仕込み総ピザ数',
+    'total_pizzas_to_prep' => 'イベント総ピザ数',
     'comped_badge' => '無料提供',
     'comped_filter' => '無料提供',
     'quick_add_comped' => '無料ピザ追加',
