@@ -82,9 +82,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['bulk_action'])) {
         $action = (string)$_POST['bulk_action'];
-        $selected_orders = isset($_POST['selected_orders']) && is_array($_POST['selected_orders']) ? $_POST['selected_orders'] : [];
+        $raw_selected = isset($_POST['selected_orders']) && is_array($_POST['selected_orders']) ? $_POST['selected_orders'] : [];
+        $selected_orders = array_values(array_filter(array_map('intval', $raw_selected), static fn(int $id) => $id > 0));
         
-        if (!empty($selected_orders) && in_array($action, ['confirmed', 'preparing', 'ready', 'completed', 'cancelled', 'comped'], true)) {
+        if (!empty($selected_orders) && in_array($action, ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled', 'comped'], true)) {
             try {
                 $placeholders = str_repeat('?,', count($selected_orders) - 1) . '?';
                 $stmt = $db->prepare("UPDATE orders SET status = ?, updated_at = NOW() WHERE id IN ($placeholders)");
@@ -99,6 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Exception $e) {
                 $error_message = __('bulk_action_error');
             }
+        } else {
+            $error_message = __('bulk_action_error');
         }
     }
 }
@@ -564,7 +567,7 @@ require_once __DIR__ . '/includes/header.php';
         </form>
 
         <!-- BULK ACTIONS & ORDERS TABLE -->
-        <form method="post">
+        <form method="post" id="bulkActionForm">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
             <div class="orders-table">
                 <div class="bulk-actions" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -644,16 +647,11 @@ require_once __DIR__ . '/includes/header.php';
                                     <td>¥<?= number_format((float)$order['total_amount'], 0) ?></td>
                                     <td><?= htmlspecialchars(formatAdminPickupDisplay(isset($order['pickup_time']) ? (string)$order['pickup_time'] : null, isset($order['pickup_slot_id']) ? (int)$order['pickup_slot_id'] : null, $slotsById, $slotsByStartTime)) ?></td>
                                     <td>
-                                        <form method="post" style="display:inline;">
-                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-                                            <input type="hidden" name="order_id" value="<?= (int)$order['id'] ?>">
-                                             <select name="status" class="status-select" onchange="this.form.submit()">
-                                                <?php foreach (['pending','confirmed','preparing','ready','completed','cancelled','comped'] as $status): ?>
-                                                    <option value="<?= htmlspecialchars($status) ?>" <?= $order['status'] === $status ? 'selected' : '' ?>><?= htmlspecialchars((string)__('status_' . $status)) ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                            <input type="hidden" name="update_status" value="1">
-                                        </form>
+                                        <select class="status-select" onchange="updateSingleOrderStatus(<?= (int)$order['id'] ?>, this.value)">
+                                            <?php foreach (['pending','confirmed','preparing','ready','completed','cancelled','comped'] as $status): ?>
+                                                <option value="<?= htmlspecialchars($status) ?>" <?= $order['status'] === $status ? 'selected' : '' ?>><?= htmlspecialchars((string)__('status_' . $status)) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
                                     </td>
                                     <td>
                                         <a href="order_details.php?id=<?= (int)$order['id'] ?>" class="btn"><?= htmlspecialchars((string)__('view_details')) ?></a>
@@ -666,10 +664,49 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </form>
 
+        <!-- Hidden form for individual order status updates -->
+        <form id="singleStatusForm" method="post" style="display:none;">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+            <input type="hidden" name="order_id" id="singleStatusOrderId" value="">
+            <input type="hidden" name="status" id="singleStatusValue" value="">
+            <input type="hidden" name="update_status" value="1">
+        </form>
+
     <script>
     function toggleAll(source) {
         const checkboxes = document.querySelectorAll('input[name="selected_orders[]"]');
         checkboxes.forEach(checkbox => checkbox.checked = source.checked);
+    }
+
+    function updateSingleOrderStatus(orderId, newStatus) {
+        const orderIdInput = document.getElementById('singleStatusOrderId');
+        const statusInput = document.getElementById('singleStatusValue');
+        const form = document.getElementById('singleStatusForm');
+        if (orderIdInput && statusInput && form) {
+            orderIdInput.value = String(orderId);
+            statusInput.value = newStatus;
+            form.submit();
+        }
+    }
+
+    const bulkActionForm = document.getElementById('bulkActionForm');
+    if (bulkActionForm) {
+        bulkActionForm.addEventListener('submit', function(e) {
+            const actionSelect = this.querySelector('select[name="bulk_action"]');
+            const action = actionSelect ? actionSelect.value.trim() : '';
+            const checkedBoxes = this.querySelectorAll('input[name="selected_orders[]"]:checked');
+            
+            if (!action) {
+                e.preventDefault();
+                alert(<?= json_encode(__('bulk_action') . ': ' . (__('select_status') ?: 'Please select a status.')) ?>);
+                return;
+            }
+            if (checkedBoxes.length === 0) {
+                e.preventDefault();
+                alert(<?= json_encode(__('bulk_action_error') ?: 'Please select at least one order.') ?>);
+                return;
+            }
+        });
     }
 
     function handleSortSelectChange(select) {
