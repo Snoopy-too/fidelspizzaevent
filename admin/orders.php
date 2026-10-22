@@ -372,13 +372,15 @@ $pizza_types = array_keys($pizza_types_map);
 // Get orders
 $stmt = $db->prepare("
     SELECT o.*, u.first_name, u.last_name, u.email,
-           GROUP_CONCAT(CONCAT(mi.name, ' x', oi.quantity) SEPARATOR ', ') as items
+           (
+               SELECT GROUP_CONCAT(CONCAT(mi.name, ' x', oi.quantity) SEPARATOR ', ')
+               FROM order_items oi
+               JOIN menu_items mi ON oi.menu_item_id = mi.id
+               WHERE oi.order_id = o.id
+           ) as items
     FROM orders o
     JOIN users u ON o.user_id = u.id
-    LEFT JOIN order_items oi ON o.id = oi.order_id
-    LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
     $where_clause
-    GROUP BY o.id
     ORDER BY $orderByClause
 ");
 $stmt->execute($params);

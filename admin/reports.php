@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+if (file_exists(__DIR__ . '/../src/autoload.php')) {
+    require_once __DIR__ . '/../src/autoload.php';
+}
+
 require_once '../config.php';
 require_once __DIR__ . '/../helpers.php';
 requireAdmin();
@@ -224,15 +228,21 @@ $ordersQuerySql = "
         u.first_name,
         u.last_name,
         u.email,
-        GROUP_CONCAT(CONCAT(mi.name, ' x', oi.quantity) SEPARATOR ', ') AS items_summary,
-        COALESCE(SUM(oi.quantity), 0) AS order_pizza_count
+        (
+            SELECT GROUP_CONCAT(CONCAT(mi.name, ' x', oi.quantity) SEPARATOR ', ')
+            FROM order_items oi
+            JOIN menu_items mi ON oi.menu_item_id = mi.id
+            WHERE oi.order_id = o.id
+        ) AS items_summary,
+        (
+            SELECT COALESCE(SUM(oi.quantity), 0)
+            FROM order_items oi
+            WHERE oi.order_id = o.id
+        ) AS order_pizza_count
     FROM orders o
     JOIN users u ON o.user_id = u.id
-    LEFT JOIN order_items oi ON o.id = oi.order_id
-    LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
     WHERE $baseDateCondition
       AND $statusFilterSql
-    GROUP BY o.id
     ORDER BY o.pickup_time ASC, o.id ASC
 ";
 $ordersStmt = $db->prepare($ordersQuerySql);
@@ -240,11 +250,13 @@ $ordersStmt->execute($dateParams);
 $event_orders = $ordersStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // g → kg conversion
-function formatWeight(float|int $grams): string {
-    if ($grams >= 1000) {
-        return number_format($grams / 1000, 2) . ' kg';
+if (!function_exists('formatWeight')) {
+    function formatWeight(float|int $grams): string {
+        if ($grams >= 1000) {
+            return number_format($grams / 1000, 2) . ' kg';
+        }
+        return number_format($grams) . ' g';
     }
-    return number_format($grams) . ' g';
 }
 
 $page_title = __('admin_reports');
