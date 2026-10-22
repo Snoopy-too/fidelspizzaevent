@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // config.php will handle starting the session, so we don't need it here.
 require_once 'config.php';
 

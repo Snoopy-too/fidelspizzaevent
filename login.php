@@ -1,6 +1,9 @@
 <?php
-require_once 'config.php';
+declare(strict_types=1);
 
+require_once __DIR__ . '/src/bootstrap.php';
+
+$container = getServiceContainer();
 $config = getSiteConfig();
 $error = '';
 
@@ -12,72 +15,50 @@ if (isLoggedIn()) {
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL);
-    $password = $_POST['password'] ?? '';
-    
-    if (empty($email) || empty($password)) {
-        $error = __('error_email_password_required');
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = __('error_invalid_email');
-    } else {
-        try {
-            $db = getDB();
-            $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch();
-            
-            if ($user && verifyPassword($password, $user['password_hash'])) {
-                if (!$user['is_confirmed']) {
-                    $error = __('error_email_confirm_required');
-                } else {
-                    // Set session
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['user_name'] = $user['first_name'];
-                    
-                    // Restore preferred language if saved in user profile
-                    if (!empty($user['preferred_lang']) && in_array($user['preferred_lang'], ['ja', 'en'], true)) {
-                        $_SESSION['lang'] = $user['preferred_lang'];
-                    }
-                    
-                    // Create session record
-                    $session_id = session_id();
-                    $expires_at = date('Y-m-d H:i:s', time() + USER_SESSION_TIMEOUT);
-                    $stmt = $db->prepare("INSERT INTO user_sessions (id, user_id, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE expires_at = ?");
-                    $stmt->execute([$session_id, $user['id'], $expires_at, $expires_at]);
-                    
-                    redirect('menu.php');
-                }
-            } else {
-                // Also check if an administrator is logging in with their admin email on this page
-                $adminStmt = $db->prepare("SELECT id, username, password_hash FROM admins WHERE LOWER(email) = LOWER(?) LIMIT 1");
-                $adminStmt->execute([$email]);
-                $admin = $adminStmt->fetch();
+    $password = (string)($_POST['password'] ?? '');
 
-                if ($admin && verifyPassword($password, $admin['password_hash'])) {
-                    $_SESSION['admin_id'] = $admin['id'];
-                    $_SESSION['admin_username'] = $admin['username'];
+    $authUseCase = $container->getAuthenticateUserUseCase();
+    $request = new \FidelsPizza\Application\DTO\AuthenticateUserRequest(
+        identifier: (string)$email,
+        password: $password,
+        allowAdminFallback: true
+    );
 
-                    $session_id = session_id();
-                    $expires_at = date('Y-m-d H:i:s', time() + ADMIN_SESSION_TIMEOUT);
-                    $stmt = $db->prepare("INSERT INTO user_sessions (id, admin_id, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE expires_at = ?");
-                    $stmt->execute([$session_id, $admin['id'], $expires_at, $expires_at]);
+    $result = $authUseCase->authenticateCustomer($request);
 
-                    redirect('admin/dashboard.php');
-                } else {
-                    $error = __('error_invalid_credentials');
-                }
+    if ($result->success && $result->user !== null) {
+        $user = $result->user;
+
+        if ($user->isCustomer()) {
+            $_SESSION['user_id'] = $user->getId();
+            $_SESSION['user_name'] = $user->getUsernameOrName();
+
+            if (!empty($user->getPreferredLang()) && in_array($user->getPreferredLang(), ['ja', 'en'], true)) {
+                $_SESSION['lang'] = $user->getPreferredLang();
             }
-        } catch (Exception $e) {
-            $error = __('error_login_failed');
+
+            $authUseCase->createSessionRecord(session_id(), $user, USER_SESSION_TIMEOUT);
+            redirect('menu.php');
+        } elseif ($user->isAdmin()) {
+            $_SESSION['admin_id'] = $user->getId();
+            $_SESSION['admin_username'] = $user->getUsernameOrName();
+
+            $authUseCase->createSessionRecord(session_id(), $user, ADMIN_SESSION_TIMEOUT);
+            redirect('admin/dashboard.php');
         }
+    } else {
+        $errorCode = $result->errorCode ?? 'error_login_failed';
+        $translated = (string)__($errorCode);
+        $error = $translated !== $errorCode ? $translated : ($result->errorMessage ?? 'Login failed');
     }
 }
 ?>
 <!DOCTYPE html>
-<html lang="<?= $_SESSION['lang'] ?? 'ja' ?>">
+<html lang="<?= htmlspecialchars((string)($_SESSION['lang'] ?? 'ja'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= __('login') ?> - <?= htmlspecialchars($config['site_title'] ?? __('site_title')) ?></title>
+    <title><?= htmlspecialchars((string)__('login'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> - <?= htmlspecialchars((string)($config['site_title'] ?? __('site_title')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
     <style>
         * {
             margin: 0;
@@ -219,38 +200,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="pizza-icon">🍕</div>
-        <h1><?= __('welcome_back') ?></h1>
+        <h1><?= htmlspecialchars((string)__('welcome_back'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
         
         <?php
         $flash = function_exists('getFlash') ? getFlash() : null;
         if ($flash && !empty($flash['message'])):
             $flashType = ($flash['type'] ?? '') === 'success' ? 'success' : 'error';
         ?>
-            <div class="alert <?= $flashType ?>"><?= htmlspecialchars((string)$flash['message'], ENT_QUOTES, 'UTF-8') ?></div>
+            <div class="alert <?= $flashType ?>"><?= htmlspecialchars((string)$flash['message'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
         <?php endif; ?>
 
         <?php if ($error): ?>
-            <div class="alert"><?= htmlspecialchars($error) ?></div>
+            <div class="alert"><?= htmlspecialchars($error, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
         <?php endif; ?>
         
         <form method="POST">
             <div class="form-group">
-                <label for="email"><?= __('email_label') ?></label>
-                <input type="email" id="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
+                <label for="email"><?= htmlspecialchars((string)__('email_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+                <input type="email" id="email" name="email" value="<?= htmlspecialchars((string)($_POST['email'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required>
             </div>
             
             <div class="form-group">
-                <label for="password"><?= __('password_label') ?></label>
+                <label for="password"><?= htmlspecialchars((string)__('password_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
                 <input type="password" id="password" name="password" required>
             </div>
             
-            <button type="submit" class="btn"><?= __('login_button') ?></button>
+            <button type="submit" class="btn"><?= htmlspecialchars((string)__('login_button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
         </form>
         
         <div class="links">
-            <a href="register.php"><?= __('no_account') ?></a>
-            <a href="forgot_password.php"><?= __('forgot_password') ?></a>
-            <a href="index.php"><?= __('back_home') ?></a>
+            <a href="register.php"><?= htmlspecialchars((string)__('no_account'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
+            <a href="forgot_password.php"><?= htmlspecialchars((string)__('forgot_password'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
+            <a href="index.php"><?= htmlspecialchars((string)__('back_home'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
         </div>
     </div>
 </body>

@@ -1,6 +1,14 @@
 <?php
 declare(strict_types=1);
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start([
+        'cookie_httponly' => true,
+        'cookie_samesite' => 'Lax',
+        'use_strict_mode' => true,
+    ]);
+}
+
 require_once __DIR__ . '/autoload.php';
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../helpers.php';

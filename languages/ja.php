@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 return [
     'site_title' => 'フィデルのピザイベント',
     'location_label' => '場所',

@@ -267,5 +267,65 @@ final class ServiceContainer
         }
         return $this->getCompedOrdersUseCase;
     }
+
+    private ?\FidelsPizza\Domain\Repository\UserRepositoryInterface $userAuthRepository = null;
+    private ?\FidelsPizza\Application\UseCase\AuthenticateUserUseCase $authenticateUserUseCase = null;
+
+    public function getUserAuthRepository(): \FidelsPizza\Domain\Repository\UserRepositoryInterface
+    {
+        if ($this->userAuthRepository === null) {
+            $this->userAuthRepository = new \FidelsPizza\Infrastructure\Persistence\PdoUserRepository($this->pdo);
+        }
+        return $this->userAuthRepository;
+    }
+
+    public function getAuthenticateUserUseCase(): \FidelsPizza\Application\UseCase\AuthenticateUserUseCase
+    {
+        if ($this->authenticateUserUseCase === null) {
+            $this->authenticateUserUseCase = new \FidelsPizza\Application\UseCase\AuthenticateUserUseCase(
+                $this->getUserAuthRepository()
+            );
+        }
+        return $this->authenticateUserUseCase;
+    }
+
+    private ?\FidelsPizza\Domain\Repository\OrderRepositoryInterface $orderRepository = null;
+    private ?\FidelsPizza\Application\UseCase\CreateOrderUseCase $createOrderUseCase = null;
+    private ?\FidelsPizza\Application\UseCase\UpdateOrderUseCase $updateOrderUseCase = null;
+
+    public function getOrderRepository(): \FidelsPizza\Domain\Repository\OrderRepositoryInterface
+    {
+        if ($this->orderRepository === null) {
+            $this->orderRepository = new \FidelsPizza\Infrastructure\Persistence\PdoOrderRepository($this->pdo);
+        }
+        return $this->orderRepository;
+    }
+
+    public function getCreateOrderUseCase(): \FidelsPizza\Application\UseCase\CreateOrderUseCase
+    {
+        if ($this->createOrderUseCase === null) {
+            $this->createOrderUseCase = new \FidelsPizza\Application\UseCase\CreateOrderUseCase(
+                $this->getOrderRepository(),
+                $this->getManagePickupTimeSlotsUseCase(),
+                $this->getOrderWindowService(),
+                $this->getSendOrderNotificationUseCase(),
+                $this->siteConfig
+            );
+        }
+        return $this->createOrderUseCase;
+    }
+
+    public function getUpdateOrderUseCase(): \FidelsPizza\Application\UseCase\UpdateOrderUseCase
+    {
+        if ($this->updateOrderUseCase === null) {
+            $this->updateOrderUseCase = new \FidelsPizza\Application\UseCase\UpdateOrderUseCase(
+                $this->getOrderRepository(),
+                $this->getManagePickupTimeSlotsUseCase(),
+                $this->getSendOrderNotificationUseCase(),
+                $this->siteConfig
+            );
+        }
+        return $this->updateOrderUseCase;
+    }
 }
 

@@ -16,15 +16,14 @@ $user_name = !empty($_SESSION['user_name']) ? (string)$_SESSION['user_name'] : '
 
 $container = getServiceContainer();
 $config = getSiteConfig();
-$db = $container->getPdo();
 $manageSlotsUseCase = $container->getManagePickupTimeSlotsUseCase();
 
 $eventDate = !empty($config['event_date']) ? (string)$config['event_date'] : date('Y-m-d');
 $availableSlots = $manageSlotsUseCase->getAvailableSlotsForOrder($eventDate);
 
-// Get menu items
-$stmt = $db->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY sort_order, name");
-$menu_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Get menu items from repository
+$orderRepo = $container->getOrderRepository();
+$menu_items = $orderRepo->getActiveMenuItems();
 
 $selectedSlotId = isset($_POST['pickup_slot_id']) ? (int)$_POST['pickup_slot_id'] : 0;
 if ($selectedSlotId === 0 && !empty($availableSlots)) {
@@ -43,124 +42,38 @@ $formattedDeadline = $orderWindowService->getFormattedDeadline($config, (string)
 $secondsRemaining = $orderWindowService->getSecondsRemaining($config);
 $countdownText = $secondsRemaining !== null ? $orderWindowService->formatRemainingCountdown($secondsRemaining, (string)($_SESSION['lang'] ?? 'ja')) : null;
 
-// Handle order submission
+// Handle order submission via CreateOrderUseCase
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
-    if (!$isOrderingOpen) {
-        $error = (string)__('order_closed_error');
-    } elseif (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
-        $error = (string)__('invalid_csrf_token');
+    $itemQuantities = [];
+    foreach ($menu_items as $item) {
+        $qty = (int)($_POST['quantity_' . $item['id']] ?? 0);
+        if ($qty > 0) {
+            $itemQuantities[(int)$item['id']] = $qty;
+        }
+    }
+
+    $createOrderRequest = new \FidelsPizza\Application\DTO\CreateOrderRequest(
+        userId: (int)$_SESSION['user_id'],
+        itemQuantities: $itemQuantities,
+        pickupSlotId: $selectedSlotId > 0 ? $selectedSlotId : null,
+        csrfToken: (string)($_POST['csrf_token'] ?? '')
+    );
+
+    $result = $container->getCreateOrderUseCase()->execute($createOrderRequest);
+
+    if ($result->success) {
+        $_SESSION['order_success'] = [
+            'order_number' => $result->orderNumber,
+            'total_amount' => $result->totalAmount,
+            'pickup_time' => $result->pickupTime,
+            'pickup_display' => $result->pickupDisplay,
+            'email_sent' => $result->emailSent,
+            'user_email' => $result->userEmail,
+        ];
+        redirect('order_success.php');
     } else {
-        $order_items = [];
-        $total_amount = 0.0;
-        $total_pizzas = 0;
-
-        foreach ($menu_items as $item) {
-            $quantity = (int)($_POST['quantity_' . $item['id']] ?? 0);
-            if ($quantity > 0 && $quantity <= 15) {
-                $subtotal = $quantity * (float)$item['price'];
-                $order_items[] = [
-                    'menu_item_id' => (int)$item['id'],
-                    'name' => (string)$item['name'],
-                    'quantity' => $quantity,
-                    'unit_price' => (float)$item['price'],
-                    'subtotal' => $subtotal,
-                ];
-                $total_amount += $subtotal;
-                $total_pizzas += $quantity;
-            }
-        }
-
-        if (empty($order_items)) {
-            $error = '注文するにはピザを1つ以上選択してください。';
-        } elseif (!empty($availableSlots) && $selectedSlotId <= 0) {
-            $error = (string)__('pickup_time_required');
-        } else {
-            try {
-                $db->beginTransaction();
-
-                $pickup_time = null;
-                $pickup_slot_id = null;
-                $pickup_display = null;
-
-                if (!empty($availableSlots)) {
-                    $validatedSlot = $manageSlotsUseCase->validateSlotForOrder(
-                        $selectedSlotId,
-                        $total_pizzas,
-                        $eventDate
-                    );
-                    $pickup_time = $validatedSlot->toDatetimeString($eventDate);
-                    $pickup_slot_id = $validatedSlot->getId();
-                    $pickup_display = $validatedSlot->getDisplayName();
-                } elseif (!empty($config['event_date'])) {
-                    $pickup_time = date('Y-m-d H:i:s', strtotime((string)$config['event_date'] . ' 12:30'));
-                    $pickup_display = '12:30';
-                }
-
-                $order_number = generateOrderNumber();
-
-                $colCheck = $db->query("SHOW COLUMNS FROM `orders` LIKE 'pickup_slot_id'");
-                if ($colCheck && $colCheck->rowCount() > 0) {
-                    $stmt = $db->prepare("
-                        INSERT INTO orders (user_id, order_number, total_amount, pickup_time, pickup_slot_id)
-                        VALUES (?, ?, ?, ?, ?)
-                    ");
-                    $stmt->execute([$_SESSION['user_id'], $order_number, $total_amount, $pickup_time, $pickup_slot_id]);
-                } else {
-                    $stmt = $db->prepare("
-                        INSERT INTO orders (user_id, order_number, total_amount, pickup_time)
-                        VALUES (?, ?, ?, ?)
-                    ");
-                    $stmt->execute([$_SESSION['user_id'], $order_number, $total_amount, $pickup_time]);
-                }
-                $order_id = (int)$db->lastInsertId();
-
-                $stmt = $db->prepare("
-                    INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal)
-                    VALUES (?, ?, ?, ?, ?)
-                ");
-                foreach ($order_items as $item) {
-                    $stmt->execute([
-                        $order_id,
-                        $item['menu_item_id'],
-                        $item['quantity'],
-                        $item['unit_price'],
-                        $item['subtotal'],
-                    ]);
-                }
-
-                $db->commit();
-
-                // Send email notifications to customer and all configured admin emails
-                $emailSent = $container->getSendOrderNotificationUseCase()->execute($order_id, 'created');
-
-                // Get user's email to display on success page
-                $userStmt = $db->prepare("SELECT email FROM users WHERE id = ?");
-                $userStmt->execute([$_SESSION['user_id']]);
-                $userEmail = (string)$userStmt->fetchColumn();
-
-                // Redirect to success page
-                $_SESSION['order_success'] = [
-                    'order_number' => $order_number,
-                    'total_amount' => $total_amount,
-                    'pickup_time' => $pickup_time,
-                    'pickup_display' => $pickup_display,
-                    'email_sent' => $emailSent,
-                    'user_email' => $userEmail,
-                ];
-                redirect('order_success.php');
-            } catch (\InvalidArgumentException $e) {
-                if ($db->inTransaction()) {
-                    $db->rollBack();
-                }
-                $error = $e->getMessage();
-                $availableSlots = $manageSlotsUseCase->getAvailableSlotsForOrder($eventDate);
-            } catch (\Throwable $e) {
-                if ($db->inTransaction()) {
-                    $db->rollBack();
-                }
-                $error = '注文の送信に失敗しました。もう一度お試しください。';
-            }
-        }
+        $error = (string)$result->errorMessage;
+        $availableSlots = $manageSlotsUseCase->getAvailableSlotsForOrder($eventDate);
     }
 }
 

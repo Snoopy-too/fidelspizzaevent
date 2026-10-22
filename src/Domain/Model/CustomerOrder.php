@@ -1,0 +1,102 @@
+<?php
+declare(strict_types=1);
+
+namespace FidelsPizza\Domain\Model;
+
+final class CustomerOrder
+{
+    /**
+     * @param int|null $id
+     * @param int $userId
+     * @param string $orderNumber
+     * @param float $totalAmount
+     * @param string $status
+     * @param string|null $notes
+     * @param string|null $pickupTime
+     * @param int|null $pickupSlotId
+     * @param array<CustomerOrderItem> $items
+     * @param string|null $createdAt
+     * @param string|null $updatedAt
+     */
+    public function __construct(
+        private readonly ?int $id,
+        private readonly int $userId,
+        private readonly string $orderNumber,
+        private readonly float $totalAmount,
+        private readonly string $status = 'pending',
+        private readonly ?string $notes = null,
+        private readonly ?string $pickupTime = null,
+        private readonly ?int $pickupSlotId = null,
+        private readonly array $items = [],
+        private readonly ?string $createdAt = null,
+        private readonly ?string $updatedAt = null
+    ) {
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function getUserId(): int
+    {
+        return $this->userId;
+    }
+
+    public function getOrderNumber(): string
+    {
+        return $this->orderNumber;
+    }
+
+    public function getTotalAmount(): float
+    {
+        return $this->totalAmount;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function getNotes(): ?string
+    {
+        return $this->notes;
+    }
+
+    public function getPickupTime(): ?string
+    {
+        return $this->pickupTime;
+    }
+
+    public function getPickupSlotId(): ?int
+    {
+        return $this->pickupSlotId;
+    }
+
+    /**
+     * @return array<CustomerOrderItem>
+     */
+    public function getItems(): array
+    {
+        return $this->items;
+    }
+
+    public function getTotalPizzas(): int
+    {
+        $sum = 0;
+        foreach ($this->items as $item) {
+            $sum += $item->getQuantity();
+        }
+        return $sum;
+    }
+
+    public function getCreatedAt(): ?string
+    {
+        return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): ?string
+    {
+        return $this->updatedAt;
+    }
+}

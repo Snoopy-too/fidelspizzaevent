@@ -1,6 +1,9 @@
 <?php
-require_once 'config.php';
+declare(strict_types=1);
 
+require_once __DIR__ . '/src/bootstrap.php';
+
+$container = getServiceContainer();
 $config = getSiteConfig();
 $error = '';
 
@@ -13,43 +16,30 @@ if (isAdmin()) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $loginInput = trim((string)($_POST['username'] ?? ''));
     $password = (string)($_POST['password'] ?? '');
-    
-    if ($loginInput === '' || $password === '') {
-        $error = __('error_username_password_required');
+
+    $authUseCase = $container->getAuthenticateUserUseCase();
+    $result = $authUseCase->authenticateAdmin($loginInput, $password);
+
+    if ($result->success && $result->user !== null) {
+        $admin = $result->user;
+        $_SESSION['admin_id'] = $admin->getId();
+        $_SESSION['admin_username'] = $admin->getUsernameOrName();
+
+        $authUseCase->createSessionRecord(session_id(), $admin, ADMIN_SESSION_TIMEOUT);
+        redirect('admin/dashboard.php');
     } else {
-        try {
-            $db = getDB();
-            $stmt = $db->prepare("SELECT id, username, password_hash FROM admins WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1");
-            $stmt->execute([$loginInput, $loginInput]);
-            $admin = $stmt->fetch();
-            
-            if ($admin && verifyPassword($password, $admin['password_hash'])) {
-                // Set admin session
-                $_SESSION['admin_id'] = $admin['id'];
-                $_SESSION['admin_username'] = $admin['username'];
-                
-                // Create session record
-                $session_id = session_id();
-                $expires_at = date('Y-m-d H:i:s', time() + ADMIN_SESSION_TIMEOUT);
-                $stmt = $db->prepare("INSERT INTO user_sessions (id, admin_id, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE expires_at = ?");
-                $stmt->execute([$session_id, $admin['id'], $expires_at, $expires_at]);
-                
-                redirect('admin/dashboard.php');
-            } else {
-                $error = __('error_invalid_credentials');
-            }
-        } catch (Exception $e) {
-            $error = __('error_login_failed');
-        }
+        $errorCode = $result->errorCode ?? 'error_login_failed';
+        $translated = (string)__($errorCode);
+        $error = $translated !== $errorCode ? $translated : ($result->errorMessage ?? 'Login failed');
     }
 }
 ?>
 <!DOCTYPE html>
-<html lang="<?= $_SESSION['lang'] ?? 'ja' ?>">
+<html lang="<?= htmlspecialchars((string)($_SESSION['lang'] ?? 'ja'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= __('admin_login_title') ?> - <?= htmlspecialchars($config['site_title'] ?? __('site_title')) ?></title>
+    <title><?= htmlspecialchars((string)__('admin_login_title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> - <?= htmlspecialchars((string)($config['site_title'] ?? __('site_title')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
     <style>
         * {
             margin: 0;
@@ -186,32 +176,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="container">
         <div class="admin-icon">👨‍💼</div>
-        <h1><?= __('admin_login_title') ?></h1>
+        <h1><?= htmlspecialchars((string)__('admin_login_title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
         
         <div class="security-note">
-            <?= __('admin_area_warning') ?>
+            <?= htmlspecialchars((string)__('admin_area_warning'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
         </div>
         
         <?php if ($error): ?>
-            <div class="alert"><?= htmlspecialchars($error) ?></div>
+            <div class="alert"><?= htmlspecialchars($error, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
         <?php endif; ?>
         
         <form method="POST">
             <div class="form-group">
-                <label for="username"><?= __('username_label') ?></label>
-                <input type="text" id="username" name="username" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" required autocomplete="username">
+                <label for="username"><?= htmlspecialchars((string)__('username_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+                <input type="text" id="username" name="username" value="<?= htmlspecialchars((string)($_POST['username'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required autocomplete="username">
             </div>
             
             <div class="form-group">
-                <label for="password"><?= __('password_label') ?></label>
+                <label for="password"><?= htmlspecialchars((string)__('password_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
                 <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
             
-            <button type="submit" class="btn"><?= __('login_admin_panel') ?></button>
+            <button type="submit" class="btn"><?= htmlspecialchars((string)__('login_admin_panel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
         </form>
         
         <div class="back-link">
-            <a href="index.php"><?= __('back_home') ?></a>
+            <a href="index.php"><?= htmlspecialchars((string)__('back_home'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
         </div>
     </div>
 </body>

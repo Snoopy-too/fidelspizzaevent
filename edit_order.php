@@ -8,7 +8,7 @@ requireLogin();
 
 $container = getServiceContainer();
 $config = getSiteConfig();
-$db = $container->getPdo();
+$orderRepo = $container->getOrderRepository();
 $manageSlotsUseCase = $container->getManagePickupTimeSlotsUseCase();
 
 $error_message = '';
@@ -23,10 +23,8 @@ if (!isset($_GET['order_id'])) {
 
 $order_id = (int)$_GET['order_id'];
 
-// Fetch order and ensure it belongs to the logged-in user and is editable
-$stmt = $db->prepare("SELECT * FROM orders WHERE id=? AND user_id=? AND status IN ('pending','confirmed')");
-$stmt->execute([$order_id, $_SESSION['user_id']]);
-$order = $stmt->fetch(PDO::FETCH_ASSOC);
+// Fetch order via repository and ensure it belongs to the logged-in user and is editable
+$order = $orderRepo->findOrderByIdAndUserId($order_id, (int)$_SESSION['user_id']);
 
 if (!$order) {
     redirect('my_orders.php');
@@ -55,99 +53,34 @@ if ($selectedSlotId === 0 && !empty($availableSlots)) {
     }
 }
 
-// Fetch order items with menu item info
-$stmt = $db->prepare("
-    SELECT oi.id AS order_item_id, oi.quantity, mi.id AS menu_item_id, mi.name, mi.price
-    FROM order_items oi
-    JOIN menu_items mi ON oi.menu_item_id = mi.id
-    WHERE oi.order_id=?
-");
-$stmt->execute([$order_id]);
-$order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Fetch order items with menu item info via repository
+$order_items = $orderRepo->findOrderItemsByOrderId($order_id);
 
-// Handle form submission to update quantities and pickup time
+// Handle form submission via UpdateOrderUseCase
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
-        $error_message = (string)__('invalid_csrf_token');
+    $itemQuantities = [];
+    foreach ($order_items as $item) {
+        $itemId = (int)$item['order_item_id'];
+        $itemQuantities[$itemId] = isset($_POST["quantity_$itemId"])
+            ? (int)$_POST["quantity_$itemId"]
+            : (int)$item['quantity'];
+    }
+
+    $updateRequest = new \FidelsPizza\Application\DTO\UpdateOrderRequest(
+        orderId: $order_id,
+        userId: (int)$_SESSION['user_id'],
+        itemQuantities: $itemQuantities,
+        pickupSlotId: $selectedSlotId > 0 ? $selectedSlotId : null,
+        csrfToken: (string)($_POST['csrf_token'] ?? '')
+    );
+
+    $result = $container->getUpdateOrderUseCase()->execute($updateRequest);
+
+    if ($result->success) {
+        redirect('my_orders.php');
     } else {
-        $db->beginTransaction();
-        try {
-            $total_amount = 0.0;
-            $total_pizzas = 0;
-            $has_items = false;
-            $cancelled_lines = [];
-
-            foreach ($order_items as $item) {
-                $prev_qty = (int)$item['quantity'];
-                $prev_sub = $prev_qty * (float)$item['price'];
-                $cancelled_lines[] = "{$item['name']} x{$prev_qty} (¥" . number_format($prev_sub) . ")";
-
-                $field_name = "quantity_{$item['order_item_id']}";
-                $new_qty = max(0, min(15, (int)($_POST[$field_name] ?? $item['quantity'])));
-
-                if ($new_qty > 0) {
-                    $stmt = $db->prepare("UPDATE order_items SET quantity=?, subtotal=? WHERE id=? AND order_id=?");
-                    $subtotal = $new_qty * (float)$item['price'];
-                    $stmt->execute([$new_qty, $subtotal, $item['order_item_id'], $order_id]);
-                    $total_amount += $subtotal;
-                    $total_pizzas += $new_qty;
-                    $has_items = true;
-                } else {
-                    $stmt = $db->prepare("DELETE FROM order_items WHERE id=? AND order_id=?");
-                    $stmt->execute([$item['order_item_id'], $order_id]);
-                }
-            }
-
-            if (!$has_items) {
-                $stmt = $db->prepare("UPDATE orders SET total_amount=0, status='cancelled', updated_at=NOW() WHERE id=?");
-                $stmt->execute([$order_id]);
-            } else {
-                $pickup_time = $order['pickup_time'] ?? null;
-                $pickup_slot_id = $order['pickup_slot_id'] ?? null;
-
-                if (!empty($availableSlots)) {
-                    $validatedSlot = $manageSlotsUseCase->validateSlotForOrder(
-                        $selectedSlotId,
-                        $total_pizzas,
-                        $eventDate,
-                        $order_id
-                    );
-                    $pickup_time = $validatedSlot->toDatetimeString($eventDate);
-                    $pickup_slot_id = $validatedSlot->getId();
-                }
-
-                $colCheck = $db->query("SHOW COLUMNS FROM `orders` LIKE 'pickup_slot_id'");
-                if ($colCheck && $colCheck->rowCount() > 0) {
-                    $stmt = $db->prepare("UPDATE orders SET total_amount=?, pickup_time=?, pickup_slot_id=?, updated_at=NOW() WHERE id=?");
-                    $stmt->execute([$total_amount, $pickup_time, $pickup_slot_id, $order_id]);
-                } else {
-                    $stmt = $db->prepare("UPDATE orders SET total_amount=?, pickup_time=?, updated_at=NOW() WHERE id=?");
-                    $stmt->execute([$total_amount, $pickup_time, $order_id]);
-                }
-            }
-
-            $db->commit();
-
-            $notificationUseCase = $container->getSendOrderNotificationUseCase();
-            if ($has_items) {
-                $notificationUseCase->execute($order_id, 'updated');
-            } else {
-                $notificationUseCase->execute($order_id, 'cancelled', implode("\n", $cancelled_lines));
-            }
-
-            redirect('my_orders.php');
-        } catch (\InvalidArgumentException $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            $error_message = $e->getMessage();
-            $availableSlots = $manageSlotsUseCase->getAvailableSlotsForOrder($eventDate, $order_id);
-        } catch (\Throwable $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            redirect('edit_order.php?order_id=' . $order_id . '&error=1');
-        }
+        $error_message = (string)$result->errorMessage;
+        $availableSlots = $manageSlotsUseCase->getAvailableSlotsForOrder($eventDate, $order_id);
     }
 }
 ?>
