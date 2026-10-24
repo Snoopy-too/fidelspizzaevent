@@ -6,6 +6,7 @@ namespace FidelsPizza\Infrastructure\Persistence;
 use FidelsPizza\Domain\Model\CompedOrder;
 use FidelsPizza\Domain\Model\CompedOrderItem;
 use FidelsPizza\Domain\Repository\CompedOrderRepositoryInterface;
+use Override;
 use PDO;
 
 final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
@@ -15,6 +16,7 @@ final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
     ) {
     }
 
+    #[Override]
     public function save(CompedOrder $order): int
     {
         $startedTransaction = false;
@@ -39,12 +41,12 @@ final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
                 ) VALUES (?, ?, ?, 'comped', ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $order->getUserId(),
-                $order->getOrderNumber(),
+                $order->userId,
+                $order->orderNumber,
                 0.0,
-                $order->getNotes(),
-                $order->getPickupTime(),
-                $order->getPickupSlotId(),
+                $order->notes,
+                $order->pickupTime,
+                $order->pickupSlotId,
                 $now
             ]);
 
@@ -60,11 +62,11 @@ final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
                 ) VALUES (?, ?, ?, 0.00, 0.00)
             ");
 
-            foreach ($order->getItems() as $item) {
+            foreach ($order->items as $item) {
                 $itemStmt->execute([
                     $orderId,
-                    $item->getMenuItemId(),
-                    $item->getQuantity()
+                    $item->menuItemId,
+                    $item->quantity
                 ]);
             }
 
@@ -81,6 +83,7 @@ final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
         }
     }
 
+    #[Override]
     public function resolveAdminUserId(int $adminId): int
     {
         // 1. Fetch admin record
@@ -127,6 +130,7 @@ final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
         return (int)$this->pdo->lastInsertId();
     }
 
+    #[Override]
     public function getCompedOrders(?string $eventDate = null): array
     {
         $params = [];
@@ -212,6 +216,7 @@ final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
         return $orders;
     }
 
+    #[Override]
     public function getCompedSummary(?string $eventDate = null): array
     {
         $params = [];
@@ -259,6 +264,7 @@ final class PdoCompedOrderRepository implements CompedOrderRepositoryInterface
         ];
     }
 
+    #[Override]
     public function getActiveMenuItems(): array
     {
         $stmt = $this->pdo->query("

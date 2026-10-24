@@ -76,95 +76,94 @@ $inMemoryRepo = new class implements PasswordResetRepositoryInterface {
     public array $activeSessionsByUser = [];
     private int $nextTokenId = 1;
 
+    #[\Override]
     public function findUserByEmail(string $email): ?array {
-        foreach ($this->users as $u) {
-            if (strtolower($u['email']) === strtolower(trim($email))) {
-                return $u;
-            }
-        }
-        return null;
+        $cleanEmail = strtolower(trim($email));
+        return array_find($this->users, static fn(array $u) => strtolower($u['email']) === $cleanEmail);
     }
 
+    #[\Override]
     public function findUserById(int $userId): ?array {
         return $this->users[$userId] ?? null;
     }
 
+    #[\Override]
     public function countRecentRequestsForUser(int $userId, \DateTimeImmutable $since): int {
         $count = 0;
         foreach ($this->tokens as $t) {
-            if ($t->getUserId() === $userId && $t->getCreatedAt() >= $since) {
+            if ($t->userId === $userId && $t->createdAt >= $since) {
                 $count++;
             }
         }
         return $count;
     }
 
+    #[\Override]
     public function countRecentRequestsForIp(string $ipAddress, \DateTimeImmutable $since): int {
         $count = 0;
         foreach ($this->tokens as $t) {
-            if ($t->getRequestedIp() === $ipAddress && $t->getCreatedAt() >= $since) {
+            if ($t->requestedIp === $ipAddress && $t->createdAt >= $since) {
                 $count++;
             }
         }
         return $count;
     }
 
+    #[\Override]
     public function createToken(PasswordResetToken $token): PasswordResetToken {
         $now = new \DateTimeImmutable();
         foreach ($this->tokens as $id => $existing) {
-            if ($existing->getUserId() === $token->getUserId() && !$existing->isUsed()) {
+            if ($existing->userId === $token->userId && !$existing->isUsed()) {
                 $this->tokens[$id] = new PasswordResetToken(
-                    userId: $existing->getUserId(),
-                    selector: $existing->getSelector(),
-                    tokenHash: $existing->getTokenHash(),
-                    expiresAt: $existing->getExpiresAt(),
-                    requestedIp: $existing->getRequestedIp(),
+                    userId: $existing->userId,
+                    selector: $existing->selector,
+                    tokenHash: $existing->tokenHash,
+                    expiresAt: $existing->expiresAt,
+                    requestedIp: $existing->requestedIp,
                     usedAt: $now,
-                    createdAt: $existing->getCreatedAt(),
-                    id: $existing->getId()
+                    createdAt: $existing->createdAt,
+                    id: $existing->id
                 );
             }
         }
         $id = $this->nextTokenId++;
         $saved = new PasswordResetToken(
-            userId: $token->getUserId(),
-            selector: $token->getSelector(),
-            tokenHash: $token->getTokenHash(),
-            expiresAt: $token->getExpiresAt(),
-            requestedIp: $token->getRequestedIp(),
-            usedAt: $token->getUsedAt(),
-            createdAt: $token->getCreatedAt(),
+            userId: $token->userId,
+            selector: $token->selector,
+            tokenHash: $token->tokenHash,
+            expiresAt: $token->expiresAt,
+            requestedIp: $token->requestedIp,
+            usedAt: $token->usedAt,
+            createdAt: $token->createdAt,
             id: $id
         );
         $this->tokens[$id] = $saved;
         return $saved;
     }
 
+    #[\Override]
     public function findBySelector(string $selector): ?PasswordResetToken {
-        foreach ($this->tokens as $t) {
-            if ($t->getSelector() === strtolower(trim($selector))) {
-                return $t;
-            }
-        }
-        return null;
+        $clean = strtolower(trim($selector));
+        return array_find($this->tokens, static fn(PasswordResetToken $t) => $t->selector === $clean);
     }
 
+    #[\Override]
     public function consumeTokenAndResetPassword(int $tokenId, int $userId, string $newPasswordHash): bool {
         if (!isset($this->tokens[$tokenId]) || $this->tokens[$tokenId]->isUsed()) {
             return false;
         }
         $now = new \DateTimeImmutable();
         foreach ($this->tokens as $id => $t) {
-            if ($t->getUserId() === $userId && !$t->isUsed()) {
+            if ($t->userId === $userId && !$t->isUsed()) {
                 $this->tokens[$id] = new PasswordResetToken(
-                    userId: $t->getUserId(),
-                    selector: $t->getSelector(),
-                    tokenHash: $t->getTokenHash(),
-                    expiresAt: $t->getExpiresAt(),
-                    requestedIp: $t->getRequestedIp(),
+                    userId: $t->userId,
+                    selector: $t->selector,
+                    tokenHash: $t->tokenHash,
+                    expiresAt: $t->expiresAt,
+                    requestedIp: $t->requestedIp,
                     usedAt: $now,
-                    createdAt: $t->getCreatedAt(),
-                    id: $t->getId()
+                    createdAt: $t->createdAt,
+                    id: $t->id
                 );
             }
         }
@@ -176,6 +175,7 @@ $inMemoryRepo = new class implements PasswordResetRepositoryInterface {
         return true;
     }
 
+    #[\Override]
     public function updateUserPassword(int $userId, string $newPasswordHash, bool $confirmEmail = false): bool {
         if (!isset($this->users[$userId])) {
             return false;
@@ -188,6 +188,7 @@ $inMemoryRepo = new class implements PasswordResetRepositoryInterface {
         return true;
     }
 
+    #[\Override]
     public function getPasswordResetEmailTemplate(): ?array {
         return null;
     }
@@ -211,6 +212,7 @@ $inMemoryRepo->activeSessionsByUser[$testUserId] = 2;
 $sentEmails = [];
 $spyEmailSender = new class($sentEmails) implements EmailSenderInterface {
     public function __construct(public array &$sentEmails) {}
+    #[\Override]
     public function send(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody): bool {
         $this->sentEmails[] = [
             'to' => $toEmail,

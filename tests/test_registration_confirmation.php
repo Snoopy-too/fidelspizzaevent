@@ -35,6 +35,7 @@ final class MockEmailSender implements EmailSenderInterface
     public array $sent = [];
     public bool $simulateSuccess = true;
 
+    #[\Override]
     public function send(
         string $toEmail,
         string $toName,

@@ -12,21 +12,21 @@ final class PromotionalCampaign
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_FAILED = 'failed';
 
-    private int $sentCount;
-    private int $failedCount;
-    private string $status;
-    private ?string $completedAt;
+    public private(set) int $sentCount;
+    public private(set) int $failedCount;
+    public private(set) string $status;
+    public private(set) ?string $completedAt;
 
     public function __construct(
-        private readonly ?int $id,
-        private readonly int $adminId,
-        private readonly string $subject,
-        private readonly string $bodyContent,
-        private readonly int $totalRecipients,
+        public private(set) ?int $id,
+        public private(set) int $adminId,
+        public private(set) string $subject,
+        public private(set) string $bodyContent,
+        public private(set) int $totalRecipients,
         int $sentCount = 0,
         int $failedCount = 0,
         string $status = self::STATUS_DRAFT,
-        private readonly ?string $createdAt = null,
+        public private(set) ?string $createdAt = null,
         ?string $completedAt = null
     ) {
         // Enforce anti-CRLF injection invariant on subject

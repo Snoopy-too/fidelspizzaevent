@@ -20,19 +20,33 @@ final class CompedOrder
      * @param array<CompedOrderItem> $items
      */
     public function __construct(
-        private readonly ?int $id,
-        private readonly int $userId,
-        private readonly string $orderNumber,
-        private readonly float $totalAmount,
-        private readonly string $status,
-        private readonly ?string $notes,
-        private readonly ?string $pickupTime,
-        private readonly ?int $pickupSlotId,
-        private readonly ?string $createdAt = null,
-        private readonly ?string $adminName = null,
-        private readonly ?string $adminEmail = null,
-        private readonly array $items = []
+        public private(set) ?int $id,
+        public private(set) int $userId,
+        public private(set) string $orderNumber,
+        public private(set) float $totalAmount,
+        public private(set) string $status,
+        public private(set) ?string $notes,
+        public private(set) ?string $pickupTime,
+        public private(set) ?int $pickupSlotId,
+        public private(set) ?string $createdAt = null,
+        public private(set) ?string $adminName = null,
+        public private(set) ?string $adminEmail = null,
+        public private(set) array $items = []
     ) {
+    }
+
+    /**
+     * PHP 8.5 Property Hook: Total pizzas calculation
+     */
+    public int $totalPizzas {
+        get => $this->getTotalPizzas();
+    }
+
+    /**
+     * PHP 8.5 Property Hook: Items summary string
+     */
+    public string $itemsSummary {
+        get => $this->getItemsSummary();
     }
 
     public function getId(): ?int
@@ -102,7 +116,7 @@ final class CompedOrder
     {
         $sum = 0;
         foreach ($this->items as $item) {
-            $sum += $item->getQuantity();
+            $sum += $item->quantity;
         }
         return $sum;
     }
@@ -111,7 +125,7 @@ final class CompedOrder
     {
         $parts = [];
         foreach ($this->items as $item) {
-            $parts[] = $item->getName() . ' x' . $item->getQuantity();
+            $parts[] = $item->name . ' x' . $item->quantity;
         }
         return implode(', ', $parts);
     }

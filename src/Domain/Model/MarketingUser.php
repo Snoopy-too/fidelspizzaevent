@@ -6,15 +6,29 @@ namespace FidelsPizza\Domain\Model;
 final class MarketingUser
 {
     public function __construct(
-        private readonly int $id,
-        private readonly string $email,
-        private readonly string $firstName,
-        private readonly string $lastName,
-        private readonly ?string $phone,
-        private readonly bool $isConfirmed,
-        private readonly bool $acceptsMarketing,
-        private readonly ?string $unsubscribeToken
+        public private(set) int $id,
+        public private(set) string $email,
+        public private(set) string $firstName,
+        public private(set) string $lastName,
+        public private(set) ?string $phone,
+        public private(set) bool $isConfirmed,
+        public private(set) bool $acceptsMarketing,
+        public private(set) ?string $unsubscribeToken
     ) {
+    }
+
+    /**
+     * PHP 8.5 Property Hook: Formatted full name
+     */
+    public string $fullName {
+        get => $this->getFullName();
+    }
+
+    /**
+     * PHP 8.5 Property Hook: Promotion delivery eligibility
+     */
+    public bool $canReceivePromotions {
+        get => $this->canReceivePromotions();
     }
 
     public function getId(): int

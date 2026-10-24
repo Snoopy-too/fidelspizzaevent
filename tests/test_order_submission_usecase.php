@@ -64,11 +64,13 @@ class InMemoryOrderRepository implements OrderRepositoryInterface
     public int $nextOrderId = 1;
     public int $nextItemId = 1;
 
+    #[\Override]
     public function getActiveMenuItems(): array
     {
         return $this->menuItems;
     }
 
+    #[\Override]
     public function findOrderByIdAndUserId(int $orderId, int $userId): ?array
     {
         if (isset($this->orders[$orderId])
@@ -79,6 +81,7 @@ class InMemoryOrderRepository implements OrderRepositoryInterface
         return null;
     }
 
+    #[\Override]
     public function findOrderItemsByOrderId(int $orderId): array
     {
         $items = [];
@@ -90,42 +93,45 @@ class InMemoryOrderRepository implements OrderRepositoryInterface
         return $items;
     }
 
+    #[\Override]
     public function getUserEmail(int $userId): ?string
     {
         return 'customer' . $userId . '@example.com';
     }
 
+    #[\Override]
     public function saveOrder(CustomerOrder $order): int
     {
         $id = $this->nextOrderId++;
         $this->orders[$id] = [
             'id' => $id,
-            'user_id' => $order->getUserId(),
-            'order_number' => $order->getOrderNumber(),
-            'total_amount' => $order->getTotalAmount(),
-            'status' => $order->getStatus(),
-            'notes' => $order->getNotes(),
-            'pickup_time' => $order->getPickupTime(),
-            'pickup_slot_id' => $order->getPickupSlotId(),
+            'user_id' => $order->userId,
+            'order_number' => $order->orderNumber,
+            'total_amount' => $order->totalAmount,
+            'status' => $order->status,
+            'notes' => $order->notes,
+            'pickup_time' => $order->pickupTime,
+            'pickup_slot_id' => $order->pickupSlotId,
         ];
 
-        foreach ($order->getItems() as $item) {
+        foreach ($order->items as $item) {
             $itemId = $this->nextItemId++;
             $this->orderItems[$itemId] = [
                 'order_item_id' => $itemId,
                 'order_id' => $id,
-                'menu_item_id' => $item->getMenuItemId(),
-                'name' => $item->getName(),
-                'quantity' => $item->getQuantity(),
-                'unit_price' => $item->getUnitPrice(),
-                'price' => $item->getUnitPrice(),
-                'subtotal' => $item->getSubtotal(),
+                'menu_item_id' => $item->menuItemId,
+                'name' => $item->name,
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unitPrice,
+                'price' => $item->unitPrice,
+                'subtotal' => $item->subtotal,
             ];
         }
 
         return $id;
     }
 
+    #[\Override]
     public function updateOrder(
         int $orderId,
         float $totalAmount,
@@ -153,6 +159,7 @@ class InMemoryOrderRepository implements OrderRepositoryInterface
         }
     }
 
+    #[\Override]
     public function cancelOrder(int $orderId): void
     {
         if (isset($this->orders[$orderId])) {
@@ -168,26 +175,31 @@ class InMemoryPickupSlotRepository implements PickupTimeSlotRepositoryInterface
     /** @var array<int, PickupTimeSlot> */
     public array $slots = [];
 
+    #[\Override]
     public function findAll(int $configId = 1, ?string $eventDate = null, ?int $excludeOrderId = null): array
     {
         return array_values($this->slots);
     }
 
+    #[\Override]
     public function findActiveWithAvailability(int $configId = 1, ?string $eventDate = null, ?int $excludeOrderId = null): array
     {
         return array_values($this->slots);
     }
 
+    #[\Override]
     public function findById(int $id, ?string $eventDate = null, ?int $excludeOrderId = null): ?PickupTimeSlot
     {
         return $this->slots[$id] ?? null;
     }
 
+    #[\Override]
     public function findForOrder(?int $slotId, ?string $pickupDatetime, int $configId = 1): ?PickupTimeSlot
     {
         return $slotId !== null ? ($this->slots[$slotId] ?? null) : null;
     }
 
+    #[\Override]
     public function syncSlots(int $configId, array $slots): void {}
 }
 

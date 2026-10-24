@@ -6,6 +6,7 @@ namespace FidelsPizza\Infrastructure\Persistence;
 use DateTimeImmutable;
 use FidelsPizza\Domain\Model\PasswordResetToken;
 use FidelsPizza\Domain\Repository\PasswordResetRepositoryInterface;
+use Override;
 use PDO;
 use PDOException;
 
@@ -65,6 +66,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         }
     }
 
+    #[Override]
     public function findUserByEmail(string $email): ?array
     {
         $cleanEmail = trim($email);
@@ -94,6 +96,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         ];
     }
 
+    #[Override]
     public function findUserById(int $userId): ?array
     {
         if ($userId <= 0) {
@@ -122,6 +125,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         ];
     }
 
+    #[Override]
     public function countRecentRequestsForUser(int $userId, DateTimeImmutable $since): int
     {
         $stmt = $this->pdo->prepare("
@@ -133,6 +137,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         return (int)$stmt->fetchColumn();
     }
 
+    #[Override]
     public function countRecentRequestsForIp(string $ipAddress, DateTimeImmutable $since): int
     {
         $cleanIp = trim($ipAddress);
@@ -149,6 +154,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         return (int)$stmt->fetchColumn();
     }
 
+    #[Override]
     public function createToken(PasswordResetToken $token): PasswordResetToken
     {
         $nowStr = (new DateTimeImmutable())->format('Y-m-d H:i:s');
@@ -159,7 +165,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
             SET `used_at` = ?
             WHERE `user_id` = ? AND `used_at` IS NULL
         ");
-        $invalidateStmt->execute([$nowStr, $token->getUserId()]);
+        $invalidateStmt->execute([$nowStr, $token->userId]);
 
         $insertStmt = $this->pdo->prepare("
             INSERT INTO `password_reset_tokens`
@@ -167,29 +173,30 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
         $insertStmt->execute([
-            $token->getUserId(),
-            $token->getSelector(),
-            $token->getTokenHash(),
-            $token->getRequestedIp(),
-            $token->getExpiresAt()->format('Y-m-d H:i:s'),
-            $token->getUsedAt()?->format('Y-m-d H:i:s'),
-            $token->getCreatedAt()->format('Y-m-d H:i:s'),
+            $token->userId,
+            $token->selector,
+            $token->tokenHash,
+            $token->requestedIp,
+            $token->expiresAt->format('Y-m-d H:i:s'),
+            $token->usedAt?->format('Y-m-d H:i:s'),
+            $token->createdAt->format('Y-m-d H:i:s'),
         ]);
 
         $id = (int)$this->pdo->lastInsertId();
 
         return new PasswordResetToken(
-            userId: $token->getUserId(),
-            selector: $token->getSelector(),
-            tokenHash: $token->getTokenHash(),
-            expiresAt: $token->getExpiresAt(),
-            requestedIp: $token->getRequestedIp(),
-            usedAt: $token->getUsedAt(),
-            createdAt: $token->getCreatedAt(),
+            userId: $token->userId,
+            selector: $token->selector,
+            tokenHash: $token->tokenHash,
+            expiresAt: $token->expiresAt,
+            requestedIp: $token->requestedIp,
+            usedAt: $token->usedAt,
+            createdAt: $token->createdAt,
             id: $id
         );
     }
 
+    #[Override]
     public function findBySelector(string $selector): ?PasswordResetToken
     {
         $cleanSelector = strtolower(trim($selector));
@@ -222,6 +229,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         );
     }
 
+    #[Override]
     public function consumeTokenAndResetPassword(int $tokenId, int $userId, string $newPasswordHash): bool
     {
         $startedTransaction = false;
@@ -283,6 +291,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         }
     }
 
+    #[Override]
     public function updateUserPassword(int $userId, string $newPasswordHash, bool $confirmEmail = false): bool
     {
         $startedTransaction = false;
@@ -334,6 +343,7 @@ final class PdoPasswordResetRepository implements PasswordResetRepositoryInterfa
         }
     }
 
+    #[Override]
     public function getPasswordResetEmailTemplate(): ?array
     {
         try {

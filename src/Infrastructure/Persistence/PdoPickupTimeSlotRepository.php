@@ -5,6 +5,7 @@ namespace FidelsPizza\Infrastructure\Persistence;
 
 use FidelsPizza\Domain\Model\PickupTimeSlot;
 use FidelsPizza\Domain\Repository\PickupTimeSlotRepositoryInterface;
+use Override;
 use PDO;
 use PDOException;
 
@@ -92,16 +93,19 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
         }
     }
 
+    #[Override]
     public function findAll(int $configId = 1, ?string $eventDate = null, ?int $excludeOrderId = null): array
     {
         return $this->querySlots($configId, false, $eventDate, $excludeOrderId);
     }
 
+    #[Override]
     public function findActiveWithAvailability(int $configId = 1, ?string $eventDate = null, ?int $excludeOrderId = null): array
     {
         return $this->querySlots($configId, true, $eventDate, $excludeOrderId);
     }
 
+    #[Override]
     public function findById(int $id, ?string $eventDate = null, ?int $excludeOrderId = null): ?PickupTimeSlot
     {
         try {
@@ -129,6 +133,7 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
         }
     }
 
+    #[Override]
     public function findForOrder(?int $slotId, ?string $pickupDatetime, int $configId = 1): ?PickupTimeSlot
     {
         try {
@@ -162,6 +167,7 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
         return null;
     }
 
+    #[Override]
     public function syncSlots(int $configId, array $slots): void
     {
         $ownTransaction = !$this->pdo->inTransaction();
@@ -189,16 +195,16 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
             ");
 
             foreach ($slots as $slot) {
-                $slotId = $slot->getId();
+                $slotId = $slot->id;
                 if ($slotId !== null && in_array($slotId, $existingIds, true)) {
                     $updateStmt->execute([
-                        $slot->getLabel(),
+                        $slot->label,
                         $slot->getSlotTimeForDb(),
                         $slot->getEndTimeForDb(),
-                        $slot->getMaxPizzas(),
-                        $slot->getMaxOrders(),
-                        $slot->isActive() ? 1 : 0,
-                        $slot->getSortOrder(),
+                        $slot->maxPizzas,
+                        $slot->maxOrders,
+                        $slot->isActive ? 1 : 0,
+                        $slot->sortOrder,
                         $slotId,
                         $configId,
                     ]);
@@ -206,13 +212,13 @@ final class PdoPickupTimeSlotRepository implements PickupTimeSlotRepositoryInter
                 } else {
                     $insertStmt->execute([
                         $configId,
-                        $slot->getLabel(),
+                        $slot->label,
                         $slot->getSlotTimeForDb(),
                         $slot->getEndTimeForDb(),
-                        $slot->getMaxPizzas(),
-                        $slot->getMaxOrders(),
-                        $slot->isActive() ? 1 : 0,
-                        $slot->getSortOrder(),
+                        $slot->maxPizzas,
+                        $slot->maxOrders,
+                        $slot->isActive ? 1 : 0,
+                        $slot->sortOrder,
                     ]);
                     $keptIds[] = (int)$this->pdo->lastInsertId();
                 }

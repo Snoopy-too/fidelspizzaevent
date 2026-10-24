@@ -45,11 +45,9 @@ $selectedSlotId = isset($_POST['pickup_slot_id'])
     : ($currentSlot?->getId() ?? 0);
 
 if ($selectedSlotId === 0 && !empty($availableSlots)) {
-    foreach ($availableSlots as $slot) {
-        if (!$slot->isFull()) {
-            $selectedSlotId = (int)$slot->getId();
-            break;
-        }
+    $firstAvailable = array_find($availableSlots, static fn(\FidelsPizza\Domain\Model\PickupTimeSlot $slot) => $slot->isAvailable);
+    if ($firstAvailable !== null) {
+        $selectedSlotId = (int)$firstAvailable->id;
     }
 }
 

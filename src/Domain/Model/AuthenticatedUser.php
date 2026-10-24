@@ -9,13 +9,27 @@ final class AuthenticatedUser
     public const ROLE_ADMIN = 'admin';
 
     public function __construct(
-        private readonly int $id,
-        private readonly string $usernameOrName,
-        private readonly string $email,
-        private readonly string $role,
-        private readonly bool $isConfirmed = true,
-        private readonly ?string $preferredLang = null
+        public private(set) int $id,
+        public private(set) string $usernameOrName,
+        public private(set) string $email,
+        public private(set) string $role,
+        public private(set) bool $isConfirmed = true,
+        public private(set) ?string $preferredLang = null
     ) {
+    }
+
+    /**
+     * PHP 8.5 Property Hook: Customer role check
+     */
+    public bool $isCustomer {
+        get => $this->role === self::ROLE_CUSTOMER;
+    }
+
+    /**
+     * PHP 8.5 Property Hook: Admin role check
+     */
+    public bool $isAdmin {
+        get => $this->role === self::ROLE_ADMIN;
     }
 
     public function getId(): int
@@ -40,12 +54,12 @@ final class AuthenticatedUser
 
     public function isCustomer(): bool
     {
-        return $this->role === self::ROLE_CUSTOMER;
+        return $this->isCustomer;
     }
 
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->isAdmin;
     }
 
     public function isConfirmed(): bool

@@ -109,6 +109,7 @@ assertTrue($loadedCampaign->getSubject() === $testSubject, "Campaign subject mat
 $spySent = [];
 $mockEmailSender = new class($spySent) implements EmailSenderInterface {
     public function __construct(public array &$spySent) {}
+    #[\Override]
     public function send(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody): bool {
         $this->spySent[] = ['to' => $toEmail, 'subject' => $subject];
         return true;

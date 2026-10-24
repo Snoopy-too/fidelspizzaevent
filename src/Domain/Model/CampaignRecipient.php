@@ -11,13 +11,13 @@ final class CampaignRecipient
     public const STATUS_OPTED_OUT = 'opted_out';
 
     public function __construct(
-        private readonly ?int $id,
-        private readonly int $campaignId,
-        private readonly int $userId,
-        private readonly string $emailSentTo,
-        private string $status = self::STATUS_PENDING,
-        private ?string $errorMessage = null,
-        private ?string $sentAt = null
+        public private(set) ?int $id,
+        public private(set) int $campaignId,
+        public private(set) int $userId,
+        public private(set) string $emailSentTo,
+        public private(set) string $status = self::STATUS_PENDING,
+        public private(set) ?string $errorMessage = null,
+        public private(set) ?string $sentAt = null
     ) {
     }
 

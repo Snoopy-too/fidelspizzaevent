@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace FidelsPizza\Infrastructure\Persistence;
 
 use FidelsPizza\Domain\Repository\UserRepositoryInterface;
+use Override;
 use PDO;
 
 final class PdoUserRepository implements UserRepositoryInterface
@@ -13,6 +14,7 @@ final class PdoUserRepository implements UserRepositoryInterface
     ) {
     }
 
+    #[Override]
     public function findCustomerByEmail(string $email): ?array
     {
         $stmt = $this->pdo->prepare("SELECT id, first_name, last_name, email, password_hash, is_confirmed, preferred_lang FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1");
@@ -21,6 +23,7 @@ final class PdoUserRepository implements UserRepositoryInterface
         return $user ?: null;
     }
 
+    #[Override]
     public function findAdminByUsernameOrEmail(string $identifier): ?array
     {
         $clean = trim($identifier);
@@ -30,6 +33,7 @@ final class PdoUserRepository implements UserRepositoryInterface
         return $admin ?: null;
     }
 
+    #[Override]
     public function findAdminByEmail(string $email): ?array
     {
         $stmt = $this->pdo->prepare("SELECT id, username, email, password_hash FROM admins WHERE LOWER(email) = LOWER(?) LIMIT 1");
@@ -38,6 +42,7 @@ final class PdoUserRepository implements UserRepositoryInterface
         return $admin ?: null;
     }
 
+    #[Override]
     public function recordSession(string $sessionId, ?int $userId, ?int $adminId, int $ttlSeconds): void
     {
         $expiresAt = date('Y-m-d H:i:s', time() + $ttlSeconds);

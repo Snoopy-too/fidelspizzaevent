@@ -37,34 +37,28 @@ class InMemoryUserRepository implements UserRepositoryInterface
     /** @var array<array<string, mixed>> */
     public array $sessions = [];
 
+    #[\Override]
     public function findCustomerByEmail(string $email): ?array
     {
         $key = strtolower(trim($email));
         return $this->customers[$key] ?? null;
     }
 
+    #[\Override]
     public function findAdminByUsernameOrEmail(string $identifier): ?array
     {
         $key = strtolower(trim($identifier));
-        foreach ($this->admins as $admin) {
-            if (strtolower($admin['username']) === $key || strtolower($admin['email']) === $key) {
-                return $admin;
-            }
-        }
-        return null;
+        return array_find($this->admins, static fn(array $admin) => strtolower($admin['username']) === $key || strtolower($admin['email']) === $key);
     }
 
+    #[\Override]
     public function findAdminByEmail(string $email): ?array
     {
         $key = strtolower(trim($email));
-        foreach ($this->admins as $admin) {
-            if (strtolower($admin['email']) === $key) {
-                return $admin;
-            }
-        }
-        return null;
+        return array_find($this->admins, static fn(array $admin) => strtolower($admin['email']) === $key);
     }
 
+    #[\Override]
     public function recordSession(string $sessionId, ?int $userId, ?int $adminId, int $ttlSeconds): void
     {
         $this->sessions[] = [

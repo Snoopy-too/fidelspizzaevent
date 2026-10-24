@@ -5,6 +5,7 @@ namespace FidelsPizza\Application\UseCase;
 
 use FidelsPizza\Application\DTO\UpdateOrderRequest;
 use FidelsPizza\Application\DTO\UpdateOrderResult;
+use FidelsPizza\Domain\Model\PickupTimeSlot;
 use FidelsPizza\Domain\Repository\OrderRepositoryInterface;
 use FidelsPizza\Infrastructure\Security\CsrfManager;
 
@@ -66,8 +67,9 @@ final class UpdateOrderUseCase
             }
         }
 
-        // 4. If all items were removed, cancel the order
-        if ($totalPizzas <= 0) {
+        // 4. If all items were removed, cancel the order (using native array_any)
+        $hasItemsRemaining = array_any($itemsToUpdate, static fn(array $item) => $item['quantity'] > 0);
+        if (!$hasItemsRemaining || $totalPizzas <= 0) {
             $this->orderRepository->cancelOrder($request->orderId);
             if (!empty($itemsToDelete)) {
                 $this->orderRepository->updateOrder(
@@ -103,6 +105,16 @@ final class UpdateOrderUseCase
         $pickupSlotId = isset($order['pickup_slot_id']) ? (int)$order['pickup_slot_id'] : null;
 
         if (!empty($availableSlots) && $request->pickupSlotId !== null && $request->pickupSlotId > 0) {
+            $targetSlotId = $request->pickupSlotId;
+            $matchedSlot = array_find(
+                $availableSlots,
+                static fn(PickupTimeSlot $slot) => ($slot->id === $targetSlotId || $slot->getId() === $targetSlotId)
+            );
+
+            if ($matchedSlot === null) {
+                return new UpdateOrderResult(success: false, errorMessage: 'The selected pickup time is not available.');
+            }
+
             try {
                 $validatedSlot = $this->manageSlotsUseCase->validateSlotForOrder(
                     $request->pickupSlotId,
@@ -111,7 +123,7 @@ final class UpdateOrderUseCase
                     $request->orderId
                 );
                 $pickupTime = $validatedSlot->toDatetimeString($eventDate);
-                $pickupSlotId = $validatedSlot->getId();
+                $pickupSlotId = $validatedSlot->id;
             } catch (\InvalidArgumentException $e) {
                 return new UpdateOrderResult(success: false, errorMessage: $e->getMessage());
             }

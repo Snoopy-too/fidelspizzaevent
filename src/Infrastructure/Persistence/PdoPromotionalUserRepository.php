@@ -5,6 +5,7 @@ namespace FidelsPizza\Infrastructure\Persistence;
 
 use FidelsPizza\Domain\Model\MarketingUser;
 use FidelsPizza\Domain\Repository\PromotionalUserRepositoryInterface;
+use Override;
 use PDO;
 
 final class PdoPromotionalUserRepository implements PromotionalUserRepositoryInterface
@@ -14,6 +15,7 @@ final class PdoPromotionalUserRepository implements PromotionalUserRepositoryInt
     ) {
     }
 
+    #[Override]
     public function findByIds(array $userIds): array
     {
         if (empty($userIds)) {
@@ -38,6 +40,7 @@ final class PdoPromotionalUserRepository implements PromotionalUserRepositoryInt
         return array_map([$this, 'hydrateUser'], $rows);
     }
 
+    #[Override]
     public function findAllEligible(): array
     {
         $stmt = $this->pdo->query("
@@ -51,6 +54,7 @@ final class PdoPromotionalUserRepository implements PromotionalUserRepositoryInt
         return array_map([$this, 'hydrateUser'], $rows);
     }
 
+    #[Override]
     public function findAllUsersForSelection(): array
     {
         $stmt = $this->pdo->query("
@@ -61,6 +65,7 @@ final class PdoPromotionalUserRepository implements PromotionalUserRepositoryInt
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    #[Override]
     public function findByUnsubscribeToken(string $token): ?MarketingUser
     {
         $cleanToken = trim($token);
@@ -80,6 +85,7 @@ final class PdoPromotionalUserRepository implements PromotionalUserRepositoryInt
         return $row ? $this->hydrateUser($row) : null;
     }
 
+    #[Override]
     public function optOutByToken(string $token): bool
     {
         $cleanToken = trim($token);

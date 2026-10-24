@@ -6,6 +6,7 @@ namespace FidelsPizza\Infrastructure\Persistence;
 use FidelsPizza\Domain\Model\CampaignRecipient;
 use FidelsPizza\Domain\Model\PromotionalCampaign;
 use FidelsPizza\Domain\Repository\CampaignRepositoryInterface;
+use Override;
 use PDO;
 
 final class PdoCampaignRepository implements CampaignRepositoryInterface
@@ -15,6 +16,7 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
     ) {
     }
 
+    #[Override]
     public function save(PromotionalCampaign $campaign): int
     {
         $stmt = $this->pdo->prepare("
@@ -25,19 +27,20 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
         ");
 
         $stmt->execute([
-            $campaign->getAdminId(),
-            $campaign->getSubject(),
-            $campaign->getBodyContent(),
-            $campaign->getTotalRecipients(),
-            $campaign->getSentCount(),
-            $campaign->getFailedCount(),
-            $campaign->getStatus(),
-            $campaign->getCreatedAt() ?? date('Y-m-d H:i:s')
+            $campaign->adminId,
+            $campaign->subject,
+            $campaign->bodyContent,
+            $campaign->totalRecipients,
+            $campaign->sentCount,
+            $campaign->failedCount,
+            $campaign->status,
+            $campaign->createdAt ?? date('Y-m-d H:i:s')
         ]);
 
         return (int)$this->pdo->lastInsertId();
     }
 
+    #[Override]
     public function findById(int $id): ?PromotionalCampaign
     {
         $stmt = $this->pdo->prepare("SELECT * FROM `promotional_campaigns` WHERE `id` = ?");
@@ -62,6 +65,7 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
         );
     }
 
+    #[Override]
     public function updateCampaignStatus(
         int $campaignId,
         int $sentCount,
@@ -77,6 +81,7 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
         $stmt->execute([$sentCount, $failedCount, $status, $completedAt, $campaignId]);
     }
 
+    #[Override]
     public function createRecipients(array $recipients): void
     {
         if (empty($recipients)) {
@@ -93,12 +98,12 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
 
             foreach ($recipients as $recipient) {
                 $stmt->execute([
-                    $recipient->getCampaignId(),
-                    $recipient->getUserId(),
-                    $recipient->getEmailSentTo(),
-                    $recipient->getStatus(),
-                    $recipient->getErrorMessage(),
-                    $recipient->getSentAt()
+                    $recipient->campaignId,
+                    $recipient->userId,
+                    $recipient->emailSentTo,
+                    $recipient->status,
+                    $recipient->errorMessage,
+                    $recipient->sentAt
                 ]);
             }
 
@@ -109,6 +114,7 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
         }
     }
 
+    #[Override]
     public function findPendingRecipients(int $campaignId, int $limit = 10): array
     {
         $stmt = $this->pdo->prepare("
@@ -136,6 +142,7 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
         return $results;
     }
 
+    #[Override]
     public function updateRecipient(CampaignRecipient $recipient): void
     {
         $stmt = $this->pdo->prepare("
@@ -144,14 +151,15 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
             WHERE `campaign_id` = ? AND `user_id` = ?
         ");
         $stmt->execute([
-            $recipient->getStatus(),
-            $recipient->getErrorMessage(),
-            $recipient->getSentAt(),
-            $recipient->getCampaignId(),
-            $recipient->getUserId()
+            $recipient->status,
+            $recipient->errorMessage,
+            $recipient->sentAt,
+            $recipient->campaignId,
+            $recipient->userId
         ]);
     }
 
+    #[Override]
     public function findRecipientsByCampaign(int $campaignId, ?string $status = null, int $limit = 100, int $offset = 0): array
     {
         $sql = "
@@ -174,6 +182,7 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    #[Override]
     public function findAllCampaigns(int $limit = 20, int $offset = 0): array
     {
         $stmt = $this->pdo->prepare("
@@ -187,6 +196,7 @@ final class PdoCampaignRepository implements CampaignRepositoryInterface
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    #[Override]
     public function countAllCampaigns(): int
     {
         $stmt = $this->pdo->query("SELECT COUNT(*) FROM `promotional_campaigns`");

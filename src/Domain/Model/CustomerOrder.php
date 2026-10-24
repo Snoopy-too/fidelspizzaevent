@@ -19,18 +19,25 @@ final class CustomerOrder
      * @param string|null $updatedAt
      */
     public function __construct(
-        private readonly ?int $id,
-        private readonly int $userId,
-        private readonly string $orderNumber,
-        private readonly float $totalAmount,
-        private readonly string $status = 'pending',
-        private readonly ?string $notes = null,
-        private readonly ?string $pickupTime = null,
-        private readonly ?int $pickupSlotId = null,
-        private readonly array $items = [],
-        private readonly ?string $createdAt = null,
-        private readonly ?string $updatedAt = null
+        public private(set) ?int $id,
+        public private(set) int $userId,
+        public private(set) string $orderNumber,
+        public private(set) float $totalAmount,
+        public private(set) string $status = 'pending',
+        public private(set) ?string $notes = null,
+        public private(set) ?string $pickupTime = null,
+        public private(set) ?int $pickupSlotId = null,
+        public private(set) array $items = [],
+        public private(set) ?string $createdAt = null,
+        public private(set) ?string $updatedAt = null
     ) {
+    }
+
+    /**
+     * PHP 8.5 Property Hook: Total pizzas calculation
+     */
+    public int $totalPizzas {
+        get => $this->getTotalPizzas();
     }
 
     public function getId(): ?int
@@ -85,7 +92,7 @@ final class CustomerOrder
     {
         $sum = 0;
         foreach ($this->items as $item) {
-            $sum += $item->getQuantity();
+            $sum += $item->quantity;
         }
         return $sum;
     }

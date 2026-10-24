@@ -5,6 +5,7 @@ namespace FidelsPizza\Infrastructure\Mail;
 
 use FidelsPizza\Domain\Service\EmailSenderInterface;
 use InvalidArgumentException;
+use Override;
 
 final class NativePhpEmailSender implements EmailSenderInterface
 {
@@ -14,6 +15,7 @@ final class NativePhpEmailSender implements EmailSenderInterface
     ) {
     }
 
+    #[Override]
     public function send(
         string $toEmail,
         string $toName,

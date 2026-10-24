@@ -52,7 +52,9 @@ final class CreateCompedOrderUseCase
             $totalPizzas += $qty;
         }
 
-        if (empty($items) || $totalPizzas <= 0) {
+        // Native PHP 8.5 array_any check
+        $hasItems = array_any($items, static fn(CompedOrderItem $item) => $item->quantity > 0);
+        if (!$hasItems || $totalPizzas <= 0) {
             return new CompedOrderResult(false, null, null, 0, 'At least one pizza must be selected with a quantity greater than 0.');
         }
 
@@ -67,7 +69,7 @@ final class CreateCompedOrderUseCase
             $slot = $this->pickupSlotRepository->findById($slotId);
             if ($slot !== null) {
                 $eventDate = !empty($this->siteConfig['event_date']) ? (string)$this->siteConfig['event_date'] : date('Y-m-d');
-                $pickupTime = $eventDate . ' ' . $slot->getSlotTime();
+                $pickupTime = $eventDate . ' ' . $slot->slotTime;
             }
         }
 
@@ -98,12 +100,16 @@ final class CreateCompedOrderUseCase
                 success: true,
                 orderId: $orderId,
                 orderNumber: $orderNumber,
-                totalPizzas: $totalPizzas
+                totalPizzas: $totalPizzas,
+                errorMessage: null
             );
         } catch (\Throwable $e) {
             return new CompedOrderResult(
                 success: false,
-                errorMessage: 'Failed to create comped order: ' . $e->getMessage()
+                orderId: null,
+                orderNumber: null,
+                totalPizzas: 0,
+                errorMessage: 'Failed to record comped order: ' . $e->getMessage()
             );
         }
     }

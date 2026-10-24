@@ -8,13 +8,13 @@ use InvalidArgumentException;
 final class PromotionalTemplate
 {
     public function __construct(
-        private readonly ?int $id,
-        private readonly int $adminId,
-        private readonly string $name,
-        private readonly string $subject,
-        private readonly string $bodyContent,
-        private readonly ?string $createdAt = null,
-        private readonly ?string $updatedAt = null
+        public private(set) ?int $id,
+        public private(set) int $adminId,
+        public private(set) string $name,
+        public private(set) string $subject,
+        public private(set) string $bodyContent,
+        public private(set) ?string $createdAt = null,
+        public private(set) ?string $updatedAt = null
     ) {
         $cleanName = trim($this->name);
         if ($cleanName === '') {

@@ -7,6 +7,7 @@ use FidelsPizza\Application\DTO\CreateOrderRequest;
 use FidelsPizza\Application\DTO\CreateOrderResult;
 use FidelsPizza\Domain\Model\CustomerOrder;
 use FidelsPizza\Domain\Model\CustomerOrderItem;
+use FidelsPizza\Domain\Model\PickupTimeSlot;
 use FidelsPizza\Domain\Repository\OrderRepositoryInterface;
 use FidelsPizza\Domain\Service\OrderWindowService;
 use FidelsPizza\Infrastructure\Security\CsrfManager;
@@ -85,7 +86,9 @@ final class CreateOrderUseCase
             $totalPizzas += $qty;
         }
 
-        if (empty($items) || $totalPizzas <= 0) {
+        // Native PHP 8.5 array_any check
+        $hasSelectedItems = array_any($items, static fn(CustomerOrderItem $item) => $item->quantity > 0);
+        if (!$hasSelectedItems || $totalPizzas <= 0) {
             $msg = function_exists('__') ? (string)__('select_at_least_one_pizza') : 'Please select at least one pizza.';
             if ($msg === 'select_at_least_one_pizza') {
                 $msg = '注文するにはピザを1つ以上選択してください。';
@@ -108,10 +111,20 @@ final class CreateOrderUseCase
                 return new CreateOrderResult(success: false, errorMessage: $msg);
             }
 
+            // PHP 8.5 native array_find to match selected slot
+            $matchedSlot = array_find(
+                $availableSlots,
+                static fn(PickupTimeSlot $slot) => ($slot->id === $selectedSlotId || $slot->getId() === $selectedSlotId)
+            );
+
+            if ($matchedSlot === null) {
+                return new CreateOrderResult(success: false, errorMessage: 'The selected pickup time is not available.');
+            }
+
             try {
                 $validatedSlot = $this->manageSlotsUseCase->validateSlotForOrder($selectedSlotId, $totalPizzas, $eventDate);
                 $pickupTime = $validatedSlot->toDatetimeString($eventDate);
-                $pickupSlotId = $validatedSlot->getId();
+                $pickupSlotId = $validatedSlot->id;
                 $pickupDisplay = $validatedSlot->getDisplayName();
             } catch (\InvalidArgumentException $e) {
                 return new CreateOrderResult(success: false, errorMessage: $e->getMessage());

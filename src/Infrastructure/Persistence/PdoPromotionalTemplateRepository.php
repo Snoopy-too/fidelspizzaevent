@@ -5,6 +5,7 @@ namespace FidelsPizza\Infrastructure\Persistence;
 
 use FidelsPizza\Domain\Model\PromotionalTemplate;
 use FidelsPizza\Domain\Repository\PromotionalTemplateRepositoryInterface;
+use Override;
 use PDO;
 
 final class PdoPromotionalTemplateRepository implements PromotionalTemplateRepositoryInterface
@@ -14,6 +15,7 @@ final class PdoPromotionalTemplateRepository implements PromotionalTemplateRepos
     ) {
     }
 
+    #[Override]
     public function findAll(): array
     {
         $stmt = $this->pdo->query("
@@ -25,6 +27,7 @@ final class PdoPromotionalTemplateRepository implements PromotionalTemplateRepos
         return array_map([$this, 'hydrate'], $rows);
     }
 
+    #[Override]
     public function findById(int $id): ?PromotionalTemplate
     {
         $stmt = $this->pdo->prepare("SELECT * FROM `promotional_templates` WHERE `id` = ?");
@@ -34,6 +37,7 @@ final class PdoPromotionalTemplateRepository implements PromotionalTemplateRepos
         return $row ? $this->hydrate($row) : null;
     }
 
+    #[Override]
     public function save(PromotionalTemplate $template): int
     {
         $stmt = $this->pdo->prepare("
@@ -42,16 +46,17 @@ final class PdoPromotionalTemplateRepository implements PromotionalTemplateRepos
         ");
 
         $stmt->execute([
-            $template->getAdminId(),
-            $template->getName(),
-            $template->getSubject(),
-            $template->getBodyContent(),
-            $template->getCreatedAt() ?? date('Y-m-d H:i:s')
+            $template->adminId,
+            $template->name,
+            $template->subject,
+            $template->bodyContent,
+            $template->createdAt ?? date('Y-m-d H:i:s')
         ]);
 
         return (int)$this->pdo->lastInsertId();
     }
 
+    #[Override]
     public function update(PromotionalTemplate $template): void
     {
         $stmt = $this->pdo->prepare("
@@ -61,14 +66,15 @@ final class PdoPromotionalTemplateRepository implements PromotionalTemplateRepos
         ");
 
         $stmt->execute([
-            $template->getName(),
-            $template->getSubject(),
-            $template->getBodyContent(),
+            $template->name,
+            $template->subject,
+            $template->bodyContent,
             date('Y-m-d H:i:s'),
-            $template->getId()
+            $template->id
         ]);
     }
 
+    #[Override]
     public function delete(int $id): bool
     {
         $stmt = $this->pdo->prepare("DELETE FROM `promotional_templates` WHERE `id` = ?");

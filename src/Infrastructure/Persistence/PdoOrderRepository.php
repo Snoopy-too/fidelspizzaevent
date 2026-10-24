@@ -5,6 +5,7 @@ namespace FidelsPizza\Infrastructure\Persistence;
 
 use FidelsPizza\Domain\Model\CustomerOrder;
 use FidelsPizza\Domain\Repository\OrderRepositoryInterface;
+use Override;
 use PDO;
 
 final class PdoOrderRepository implements OrderRepositoryInterface
@@ -14,12 +15,14 @@ final class PdoOrderRepository implements OrderRepositoryInterface
     ) {
     }
 
+    #[Override]
     public function getActiveMenuItems(): array
     {
         $stmt = $this->pdo->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY sort_order, name");
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    #[Override]
     public function findOrderByIdAndUserId(int $orderId, int $userId): ?array
     {
         $stmt = $this->pdo->prepare("SELECT * FROM orders WHERE id = ? AND user_id = ? AND status IN ('pending', 'confirmed') LIMIT 1");
@@ -28,6 +31,7 @@ final class PdoOrderRepository implements OrderRepositoryInterface
         return $row ?: null;
     }
 
+    #[Override]
     public function findOrderItemsByOrderId(int $orderId): array
     {
         $stmt = $this->pdo->prepare("
@@ -40,6 +44,7 @@ final class PdoOrderRepository implements OrderRepositoryInterface
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    #[Override]
     public function getUserEmail(int $userId): ?string
     {
         $stmt = $this->pdo->prepare("SELECT email FROM users WHERE id = ? LIMIT 1");
@@ -48,6 +53,7 @@ final class PdoOrderRepository implements OrderRepositoryInterface
         return $email !== false ? (string)$email : null;
     }
 
+    #[Override]
     public function saveOrder(CustomerOrder $order): int
     {
         $startedTransaction = false;
@@ -72,13 +78,13 @@ final class PdoOrderRepository implements OrderRepositoryInterface
                     VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([
-                    $order->getUserId(),
-                    $order->getOrderNumber(),
-                    $order->getTotalAmount(),
-                    $order->getStatus(),
-                    $order->getNotes(),
-                    $order->getPickupTime(),
-                    $order->getPickupSlotId()
+                    $order->userId,
+                    $order->orderNumber,
+                    $order->totalAmount,
+                    $order->status,
+                    $order->notes,
+                    $order->pickupTime,
+                    $order->pickupSlotId
                 ]);
             } else {
                 $stmt = $this->pdo->prepare("
@@ -86,12 +92,12 @@ final class PdoOrderRepository implements OrderRepositoryInterface
                     VALUES (?, ?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([
-                    $order->getUserId(),
-                    $order->getOrderNumber(),
-                    $order->getTotalAmount(),
-                    $order->getStatus(),
-                    $order->getNotes(),
-                    $order->getPickupTime()
+                    $order->userId,
+                    $order->orderNumber,
+                    $order->totalAmount,
+                    $order->status,
+                    $order->notes,
+                    $order->pickupTime
                 ]);
             }
 
@@ -102,13 +108,13 @@ final class PdoOrderRepository implements OrderRepositoryInterface
                 VALUES (?, ?, ?, ?, ?)
             ");
 
-            foreach ($order->getItems() as $item) {
+            foreach ($order->items as $item) {
                 $itemStmt->execute([
                     $orderId,
-                    $item->getMenuItemId(),
-                    $item->getQuantity(),
-                    $item->getUnitPrice(),
-                    $item->getSubtotal()
+                    $item->menuItemId,
+                    $item->quantity,
+                    $item->unitPrice,
+                    $item->subtotal
                 ]);
             }
 
@@ -125,6 +131,7 @@ final class PdoOrderRepository implements OrderRepositoryInterface
         }
     }
 
+    #[Override]
     public function updateOrder(
         int $orderId,
         float $totalAmount,
@@ -184,6 +191,7 @@ final class PdoOrderRepository implements OrderRepositoryInterface
         }
     }
 
+    #[Override]
     public function cancelOrder(int $orderId): void
     {
         $stmt = $this->pdo->prepare("UPDATE orders SET total_amount = 0, status = 'cancelled', updated_at = NOW() WHERE id = ?");

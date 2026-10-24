@@ -34,6 +34,7 @@ class InMemoryOrderEmailSender implements EmailSenderInterface
     public array $sentMessages = [];
     public bool $shouldFail = false;
 
+    #[\Override]
     public function send(
         string $toEmail,
         string $toName,
@@ -60,14 +61,19 @@ class InMemoryOrderEmailSender implements EmailSenderInterface
 // Mock Pickup Slot Repository
 class MockPickupSlotRepository implements PickupTimeSlotRepositoryInterface
 {
+    #[\Override]
     public function findAll(int $configId = 1, ?string $eventDate = null, ?int $excludeOrderId = null): array { return []; }
+    #[\Override]
     public function findActiveWithAvailability(int $configId = 1, ?string $eventDate = null, ?int $excludeOrderId = null): array { return []; }
+    #[\Override]
     public function findById(int $id, ?string $eventDate = null, ?int $excludeOrderId = null): ?PickupTimeSlot {
         return new PickupTimeSlot($id, 1, 'Slot A', '12:00', '13:00', 20, 10, true, 0, 0, 0);
     }
+    #[\Override]
     public function findForOrder(?int $slotId, ?string $pickupDatetime, int $configId = 1): ?PickupTimeSlot {
         return new PickupTimeSlot(1, 1, 'Slot A', '12:00', '13:00', 20, 10, true, 0, 0, 0);
     }
+    #[\Override]
     public function syncSlots(int $configId, array $slots): void {}
 }
 
