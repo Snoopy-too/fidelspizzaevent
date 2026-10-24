@@ -9,27 +9,13 @@ final class AuthenticatedUser
     public const ROLE_ADMIN = 'admin';
 
     public function __construct(
-        public private(set) int $id,
-        public private(set) string $usernameOrName,
-        public private(set) string $email,
-        public private(set) string $role,
-        public private(set) bool $isConfirmed = true,
-        public private(set) ?string $preferredLang = null
+        public readonly int $id,
+        public readonly string $usernameOrName,
+        public readonly string $email,
+        public readonly string $role,
+        public readonly bool $isConfirmed = true,
+        public readonly ?string $preferredLang = null
     ) {
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Customer role check
-     */
-    public bool $isCustomer {
-        get => $this->role === self::ROLE_CUSTOMER;
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Admin role check
-     */
-    public bool $isAdmin {
-        get => $this->role === self::ROLE_ADMIN;
     }
 
     public function getId(): int
@@ -54,12 +40,12 @@ final class AuthenticatedUser
 
     public function isCustomer(): bool
     {
-        return $this->isCustomer;
+        return $this->role === self::ROLE_CUSTOMER;
     }
 
     public function isAdmin(): bool
     {
-        return $this->isAdmin;
+        return $this->role === self::ROLE_ADMIN;
     }
 
     public function isConfirmed(): bool
@@ -70,5 +56,19 @@ final class AuthenticatedUser
     public function getPreferredLang(): ?string
     {
         return $this->preferredLang;
+    }
+
+    public function __get(string $name): mixed
+    {
+        return match ($name) {
+            'isCustomer' => $this->isCustomer(),
+            'isAdmin' => $this->isAdmin(),
+            default => null,
+        };
+    }
+
+    public function __isset(string $name): bool
+    {
+        return in_array($name, ['isCustomer', 'isAdmin'], true);
     }
 }

@@ -8,14 +8,14 @@ use InvalidArgumentException;
 
 final class PasswordResetToken
 {
-    public private(set) int $userId;
-    public private(set) string $selector;
-    public private(set) string $tokenHash;
-    public private(set) ?string $requestedIp;
-    public private(set) DateTimeImmutable $expiresAt;
-    public private(set) ?DateTimeImmutable $usedAt;
-    public private(set) DateTimeImmutable $createdAt;
-    public private(set) ?int $id;
+    public readonly int $userId;
+    public readonly string $selector;
+    public readonly string $tokenHash;
+    public readonly ?string $requestedIp;
+    public readonly DateTimeImmutable $expiresAt;
+    public readonly ?DateTimeImmutable $usedAt;
+    public readonly DateTimeImmutable $createdAt;
+    public readonly ?int $id;
 
     public function __construct(
         int $userId,

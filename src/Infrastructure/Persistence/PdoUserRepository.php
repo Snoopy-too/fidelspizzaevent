@@ -45,12 +45,16 @@ final class PdoUserRepository implements UserRepositoryInterface
     #[Override]
     public function recordSession(string $sessionId, ?int $userId, ?int $adminId, int $ttlSeconds): void
     {
-        $expiresAt = date('Y-m-d H:i:s', time() + $ttlSeconds);
-        $stmt = $this->pdo->prepare("
-            INSERT INTO user_sessions (id, user_id, admin_id, expires_at)
-            VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at)
-        ");
-        $stmt->execute([$sessionId, $userId, $adminId, $expiresAt]);
+        try {
+            $expiresAt = date('Y-m-d H:i:s', time() + $ttlSeconds);
+            $stmt = $this->pdo->prepare("
+                INSERT INTO user_sessions (id, user_id, admin_id, expires_at)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at)
+            ");
+            $stmt->execute([$sessionId, $userId, $adminId, $expiresAt]);
+        } catch (\Throwable $e) {
+            error_log('[PdoUserRepository] Failed to record session: ' . $e->getMessage());
+        }
     }
 }

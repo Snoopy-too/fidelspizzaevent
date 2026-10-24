@@ -37,13 +37,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['lang'] = $user->getPreferredLang();
             }
 
-            $authUseCase->createSessionRecord(session_id(), $user, USER_SESSION_TIMEOUT);
+            $userTimeout = defined('USER_SESSION_TIMEOUT') ? USER_SESSION_TIMEOUT : 7200;
+            $authUseCase->createSessionRecord(session_id(), $user, $userTimeout);
             redirect('menu.php');
         } elseif ($user->isAdmin()) {
             $_SESSION['admin_id'] = $user->getId();
             $_SESSION['admin_username'] = $user->getUsernameOrName();
 
-            $authUseCase->createSessionRecord(session_id(), $user, ADMIN_SESSION_TIMEOUT);
+            $adminTimeout = defined('ADMIN_SESSION_TIMEOUT') ? ADMIN_SESSION_TIMEOUT : 3600;
+            $authUseCase->createSessionRecord(session_id(), $user, $adminTimeout);
             redirect('admin/dashboard.php');
         }
     } else {

@@ -7,24 +7,24 @@ use InvalidArgumentException;
 
 final class PickupTimeSlot
 {
-    public private(set) string $cleanLabel;
-    public private(set) string $normalizedSlotTime;
-    public private(set) string $normalizedEndTime;
+    public readonly string $cleanLabel;
+    public readonly string $normalizedSlotTime;
+    public readonly string $normalizedEndTime;
 
     public function __construct(
-        public private(set) ?int $id,
-        public private(set) int $configId,
+        public readonly ?int $id,
+        public readonly int $configId,
         string $label,
         string $slotTime,
         string $endTime,
-        public private(set) ?int $maxPizzas = null,
-        public private(set) ?int $maxOrders = null,
-        public private(set) bool $isActive = true,
-        public private(set) int $sortOrder = 0,
-        public private(set) int $bookedPizzas = 0,
-        public private(set) int $bookedOrders = 0,
-        public private(set) ?string $createdAt = null,
-        public private(set) ?string $updatedAt = null
+        public readonly ?int $maxPizzas = null,
+        public readonly ?int $maxOrders = null,
+        public readonly bool $isActive = true,
+        public readonly int $sortOrder = 0,
+        public readonly int $bookedPizzas = 0,
+        public readonly int $bookedOrders = 0,
+        public readonly ?string $createdAt = null,
+        public readonly ?string $updatedAt = null
     ) {
         $trimmedLabel = trim($label);
         if (preg_match('/[\r\n]/', $trimmedLabel)) {
@@ -62,46 +62,9 @@ final class PickupTimeSlot
         }
     }
 
-    /**
-     * PHP 8.5 Property Hook: Public read-only access to slot label
-     */
-    public string $label {
-        get => $this->cleanLabel;
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Public read-only access to HH:MM slot start time
-     */
-    public string $slotTime {
-        get => $this->normalizedSlotTime;
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Public read-only access to HH:MM slot end time
-     */
-    public string $endTime {
-        get => $this->normalizedEndTime;
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Slot availability check
-     */
-    public bool $isAvailable {
-        get => $this->canAccommodate(1);
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Remaining pizza capacity
-     */
-    public ?int $remainingPizzas {
-        get => $this->getRemainingPizzas();
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Remaining order capacity
-     */
-    public ?int $remainingOrders {
-        get => $this->getRemainingOrders();
+    public function isAvailable(): bool
+    {
+        return $this->canAccommodate(1);
     }
 
     public function getId(): ?int
@@ -252,6 +215,24 @@ final class PickupTimeSlot
     public function getUpdatedAt(): ?string
     {
         return $this->updatedAt;
+    }
+
+    public function __get(string $name): mixed
+    {
+        return match ($name) {
+            'label' => $this->cleanLabel,
+            'slotTime' => $this->normalizedSlotTime,
+            'endTime' => $this->normalizedEndTime,
+            'isAvailable' => $this->isAvailable(),
+            'remainingPizzas' => $this->getRemainingPizzas(),
+            'remainingOrders' => $this->getRemainingOrders(),
+            default => null,
+        };
+    }
+
+    public function __isset(string $name): bool
+    {
+        return in_array($name, ['label', 'slotTime', 'endTime', 'isAvailable', 'remainingPizzas', 'remainingOrders'], true);
     }
 
     /**

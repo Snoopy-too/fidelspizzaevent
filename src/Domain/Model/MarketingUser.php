@@ -6,29 +6,15 @@ namespace FidelsPizza\Domain\Model;
 final class MarketingUser
 {
     public function __construct(
-        public private(set) int $id,
-        public private(set) string $email,
-        public private(set) string $firstName,
-        public private(set) string $lastName,
-        public private(set) ?string $phone,
-        public private(set) bool $isConfirmed,
-        public private(set) bool $acceptsMarketing,
-        public private(set) ?string $unsubscribeToken
+        public readonly int $id,
+        public readonly string $email,
+        public readonly string $firstName,
+        public readonly string $lastName,
+        public readonly ?string $phone,
+        public readonly bool $isConfirmed,
+        public readonly bool $acceptsMarketing,
+        public readonly ?string $unsubscribeToken
     ) {
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Formatted full name
-     */
-    public string $fullName {
-        get => $this->getFullName();
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Promotion delivery eligibility
-     */
-    public bool $canReceivePromotions {
-        get => $this->canReceivePromotions();
     }
 
     public function getId(): int
@@ -80,5 +66,19 @@ final class MarketingUser
     public function canReceivePromotions(): bool
     {
         return $this->isConfirmed && $this->acceptsMarketing;
+    }
+
+    public function __get(string $name): mixed
+    {
+        return match ($name) {
+            'fullName' => $this->getFullName(),
+            'canReceivePromotions' => $this->canReceivePromotions(),
+            default => null,
+        };
+    }
+
+    public function __isset(string $name): bool
+    {
+        return in_array($name, ['fullName', 'canReceivePromotions'], true);
     }
 }

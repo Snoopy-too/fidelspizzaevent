@@ -25,7 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['admin_id'] = $admin->getId();
         $_SESSION['admin_username'] = $admin->getUsernameOrName();
 
-        $authUseCase->createSessionRecord(session_id(), $admin, ADMIN_SESSION_TIMEOUT);
+        $timeout = defined('ADMIN_SESSION_TIMEOUT') ? ADMIN_SESSION_TIMEOUT : 3600;
+        $authUseCase->createSessionRecord(session_id(), $admin, $timeout);
         redirect('admin/dashboard.php');
     } else {
         $errorCode = $result->errorCode ?? 'error_login_failed';

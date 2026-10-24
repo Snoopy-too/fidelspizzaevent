@@ -6,22 +6,15 @@ namespace FidelsPizza\Domain\Model;
 final class CompedOrderItem
 {
     public function __construct(
-        public private(set) int $menuItemId,
-        public private(set) string $name,
-        public private(set) int $quantity
+        public readonly int $menuItemId,
+        public readonly string $name,
+        public readonly int $quantity
     ) {
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Check if item is a specialty pizza
-     */
-    public bool $isSpecialty {
-        get => stripos($this->name, 'special') !== false;
     }
 
     public function isSpecialty(): bool
     {
-        return $this->isSpecialty;
+        return stripos($this->name, 'special') !== false;
     }
 
     public function getMenuItemId(): int
@@ -37,5 +30,18 @@ final class CompedOrderItem
     public function getQuantity(): int
     {
         return $this->quantity;
+    }
+
+    public function __get(string $name): mixed
+    {
+        return match ($name) {
+            'isSpecialty' => $this->isSpecialty(),
+            default => null,
+        };
+    }
+
+    public function __isset(string $name): bool
+    {
+        return $name === 'isSpecialty';
     }
 }

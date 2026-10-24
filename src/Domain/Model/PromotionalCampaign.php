@@ -12,21 +12,21 @@ final class PromotionalCampaign
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_FAILED = 'failed';
 
-    public private(set) int $sentCount;
-    public private(set) int $failedCount;
-    public private(set) string $status;
-    public private(set) ?string $completedAt;
+    private int $sentCount;
+    private int $failedCount;
+    private string $status;
+    private ?string $completedAt;
 
     public function __construct(
-        public private(set) ?int $id,
-        public private(set) int $adminId,
-        public private(set) string $subject,
-        public private(set) string $bodyContent,
-        public private(set) int $totalRecipients,
+        public readonly ?int $id,
+        public readonly int $adminId,
+        public readonly string $subject,
+        public readonly string $bodyContent,
+        public readonly int $totalRecipients,
         int $sentCount = 0,
         int $failedCount = 0,
         string $status = self::STATUS_DRAFT,
-        public private(set) ?string $createdAt = null,
+        public readonly ?string $createdAt = null,
         ?string $completedAt = null
     ) {
         // Enforce anti-CRLF injection invariant on subject
@@ -120,5 +120,21 @@ final class PromotionalCampaign
     {
         $this->status = self::STATUS_FAILED;
         $this->completedAt = date('Y-m-d H:i:s');
+    }
+
+    public function __get(string $name): mixed
+    {
+        return match ($name) {
+            'sentCount' => $this->sentCount,
+            'failedCount' => $this->failedCount,
+            'status' => $this->status,
+            'completedAt' => $this->completedAt,
+            default => null,
+        };
+    }
+
+    public function __isset(string $name): bool
+    {
+        return in_array($name, ['sentCount', 'failedCount', 'status', 'completedAt'], true);
     }
 }

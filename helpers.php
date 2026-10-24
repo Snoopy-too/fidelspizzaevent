@@ -9,6 +9,34 @@ if (file_exists(__DIR__ . '/src/autoload.php')) {
     require_once __DIR__ . '/src/autoload.php';
 }
 
+if (!function_exists('array_find')) {
+    /**
+     * Polyfill for PHP 8.4+ array_find
+     */
+    function array_find(array $array, callable $callback): mixed {
+        foreach ($array as $key => $value) {
+            if ($callback($value, $key)) {
+                return $value;
+            }
+        }
+        return null;
+    }
+}
+
+if (!function_exists('array_any')) {
+    /**
+     * Polyfill for PHP 8.4+ array_any
+     */
+    function array_any(array $array, callable $callback): bool {
+        foreach ($array as $key => $value) {
+            if ($callback($value, $key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 if (!function_exists('getCsrfToken')) {
     function getCsrfToken(): string {
         if (class_exists(\FidelsPizza\Infrastructure\Security\CsrfManager::class)) {

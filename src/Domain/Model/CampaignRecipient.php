@@ -10,15 +10,22 @@ final class CampaignRecipient
     public const STATUS_FAILED = 'failed';
     public const STATUS_OPTED_OUT = 'opted_out';
 
+    private string $status;
+    private ?string $errorMessage;
+    private ?string $sentAt;
+
     public function __construct(
-        public private(set) ?int $id,
-        public private(set) int $campaignId,
-        public private(set) int $userId,
-        public private(set) string $emailSentTo,
-        public private(set) string $status = self::STATUS_PENDING,
-        public private(set) ?string $errorMessage = null,
-        public private(set) ?string $sentAt = null
+        public readonly ?int $id,
+        public readonly int $campaignId,
+        public readonly int $userId,
+        public readonly string $emailSentTo,
+        string $status = self::STATUS_PENDING,
+        ?string $errorMessage = null,
+        ?string $sentAt = null
     ) {
+        $this->status = $status;
+        $this->errorMessage = $errorMessage;
+        $this->sentAt = $sentAt;
     }
 
     public function getId(): ?int
@@ -75,5 +82,20 @@ final class CampaignRecipient
         $this->status = self::STATUS_OPTED_OUT;
         $this->errorMessage = 'User has unsubscribed from promotional emails.';
         $this->sentAt = date('Y-m-d H:i:s');
+    }
+
+    public function __get(string $name): mixed
+    {
+        return match ($name) {
+            'status' => $this->status,
+            'errorMessage' => $this->errorMessage,
+            'sentAt' => $this->sentAt,
+            default => null,
+        };
+    }
+
+    public function __isset(string $name): bool
+    {
+        return in_array($name, ['status', 'errorMessage', 'sentAt'], true);
     }
 }

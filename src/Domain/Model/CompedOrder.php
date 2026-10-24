@@ -20,33 +20,19 @@ final class CompedOrder
      * @param array<CompedOrderItem> $items
      */
     public function __construct(
-        public private(set) ?int $id,
-        public private(set) int $userId,
-        public private(set) string $orderNumber,
-        public private(set) float $totalAmount,
-        public private(set) string $status,
-        public private(set) ?string $notes,
-        public private(set) ?string $pickupTime,
-        public private(set) ?int $pickupSlotId,
-        public private(set) ?string $createdAt = null,
-        public private(set) ?string $adminName = null,
-        public private(set) ?string $adminEmail = null,
-        public private(set) array $items = []
+        public readonly ?int $id,
+        public readonly int $userId,
+        public readonly string $orderNumber,
+        public readonly float $totalAmount,
+        public readonly string $status,
+        public readonly ?string $notes,
+        public readonly ?string $pickupTime,
+        public readonly ?int $pickupSlotId,
+        public readonly ?string $createdAt = null,
+        public readonly ?string $adminName = null,
+        public readonly ?string $adminEmail = null,
+        public readonly array $items = []
     ) {
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Total pizzas calculation
-     */
-    public int $totalPizzas {
-        get => $this->getTotalPizzas();
-    }
-
-    /**
-     * PHP 8.5 Property Hook: Items summary string
-     */
-    public string $itemsSummary {
-        get => $this->getItemsSummary();
     }
 
     public function getId(): ?int
@@ -128,5 +114,19 @@ final class CompedOrder
             $parts[] = $item->name . ' x' . $item->quantity;
         }
         return implode(', ', $parts);
+    }
+
+    public function __get(string $name): mixed
+    {
+        return match ($name) {
+            'totalPizzas' => $this->getTotalPizzas(),
+            'itemsSummary' => $this->getItemsSummary(),
+            default => null,
+        };
+    }
+
+    public function __isset(string $name): bool
+    {
+        return in_array($name, ['totalPizzas', 'itemsSummary'], true);
     }
 }
